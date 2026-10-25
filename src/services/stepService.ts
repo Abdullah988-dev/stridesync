@@ -1,4 +1,3 @@
-import { Pedometer } from 'expo-sensors';
 import { Platform } from 'react-native';
 import {
   initDatabase,
@@ -13,6 +12,7 @@ import {
 } from '../utils/calculations';
 import { getTodayDateString } from '../utils/dateHelpers';
 import { liveNotificationService } from './liveNotificationService';
+import { nativeStepService } from './nativeStepService';
 import { useUserStore } from '../store/useUserStore';
 
 export interface StepUpdateEvent {
@@ -29,12 +29,12 @@ type StepUpdateListener = (event: StepUpdateEvent) => void;
 
 class StepService {
   private listeners: Set<StepUpdateListener> = new Set();
-  private subscription: Pedometer.Subscription | null = null;
   private currentDate: string = getTodayDateString();
   private currentSteps: number = 0;
   private isPaused: boolean = false;
   private midnightCheckTimer: ReturnType<typeof setInterval> | null = null;
   private isInitialized = false;
+  private nativeUnsubscribe: (() => void) | null = null;
 
   /**
    * Initializes the StepService, database, and background synchronization.
@@ -47,8 +47,38 @@ class StepService {
     const todayRecord = await getDailySteps(this.currentDate);
     this.currentSteps = todayRecord ? todayRecord.steps : 0;
 
+    const user = useUserStore.getState();
+    await nativeStepService.initService(user.dailyGoal || 10000);
+
+    // Single source of truth subscription
+    if (!this.nativeUnsubscribe) {
+      this.nativeUnsubscribe = nativeStepService.subscribe(async (data) => {
+        if (this.isPaused) return;
+        if (data.todaySteps > this.currentSteps) {
+          await this.setSteps(this.currentDate, data.todaySteps);
+        }
+      });
+    }
+
+    // Catch-up immediately on app launch
+    await this.catchUpFromSensor();
+
     this.startMidnightWatcher();
     this.isInitialized = true;
+  }
+
+  /**
+   * Catches up steps immediately from native hardware sensor baseline.
+   */
+  async catchUpFromSensor(): Promise<void> {
+    try {
+      const nativeData = await nativeStepService.getTodaySteps();
+      if (nativeData.todaySteps > this.currentSteps) {
+        await this.setSteps(this.currentDate, nativeData.todaySteps);
+      }
+    } catch (e) {
+      console.warn('Sensor catch-up failed:', e);
+    }
   }
 
   /**
@@ -90,50 +120,13 @@ class StepService {
   async addSteps(amount: number): Promise<void> {
     if (this.isPaused || amount <= 0) return;
 
-    // Check if date changed to handle midnight reset
     this.checkDateChange();
-
-    this.currentSteps += amount;
-    const metrics = this.getCurrentMetrics();
-    const currentHour = new Date().getHours();
-
-    // 1. Save to SQLite
-    await saveDailySteps({
-      date: this.currentDate,
-      steps: metrics.steps,
-      distanceKm: metrics.distanceKm,
-      calories: metrics.calories,
-      activeMinutes: metrics.activeMinutes,
-      goalReached: metrics.goalReached,
-    });
-    await saveHourlySteps(this.currentDate, currentHour, metrics.steps);
-
-    // 2. Notify all UI store listeners
-    this.emit(metrics);
-
-    // 3. Update live persistent notification (if enabled)
-    const user = useUserStore.getState();
-    if (user.notificationsEnabled) {
-      await liveNotificationService.updateLiveStepNotification({
-        steps: metrics.steps,
-        goal: user.dailyGoal,
-        distanceKm: metrics.distanceKm,
-        calories: metrics.calories,
-        activeMinutes: metrics.activeMinutes,
-        units: user.units,
-        language: user.language,
-        isPaused: this.isPaused,
-      });
-
-      // If goal reached, fire one-time celebration alert
-      if (metrics.goalReached) {
-        await liveNotificationService.triggerGoalCelebrationAlert(user.dailyGoal, user.language);
-      }
-    }
+    const newSteps = this.currentSteps + amount;
+    await this.setSteps(this.currentDate, newSteps);
   }
 
   /**
-   * Manually sets steps for a specific date.
+   * Sets steps for a specific date (idempotent, single writer to SQLite).
    */
   async setSteps(date: string, steps: number): Promise<void> {
     const safeSteps = Math.max(0, Math.floor(steps));
@@ -147,6 +140,17 @@ class StepService {
     const activeMinutes = calculateActiveMinutes(safeSteps);
     const goalReached = safeSteps >= user.dailyGoal && user.dailyGoal > 0;
 
+    const metrics: StepUpdateEvent = {
+      date,
+      steps: safeSteps,
+      distanceKm,
+      calories,
+      activeMinutes,
+      goalReached,
+      isPaused: this.isPaused,
+    };
+
+    // 1. Save to SQLite
     await saveDailySteps({
       date,
       steps: safeSteps,
@@ -156,39 +160,37 @@ class StepService {
       goalReached,
     });
 
-    if (date === this.currentDate) {
-      this.emit(this.getCurrentMetrics());
+    const currentHour = new Date().getHours();
+    await saveHourlySteps(date, currentHour, safeSteps);
+
+    // 2. Notify all UI listeners
+    this.emit(metrics);
+
+    // 3. Update live notification if date is today
+    if (date === this.currentDate && user.notificationsEnabled) {
+      await liveNotificationService.updateLiveStepNotification({
+        steps: safeSteps,
+        goal: user.dailyGoal,
+        distanceKm,
+        calories,
+        activeMinutes,
+        units: user.units,
+        language: user.language,
+        isPaused: this.isPaused,
+      });
+
+      if (goalReached) {
+        await liveNotificationService.triggerGoalCelebrationAlert(user.dailyGoal, user.language);
+      }
     }
   }
 
   /**
-   * Starts live hardware pedometer sensor tracking.
+   * Starts hardware sensor tracking via native service.
    */
   async startPedometerTracking(): Promise<boolean> {
-    if (Platform.OS === 'web') return false;
-
-    try {
-      const isAvailable = await Pedometer.isAvailableAsync();
-      if (!isAvailable) return false;
-
-      const perm = await Pedometer.requestPermissionsAsync();
-      if (!perm.granted) return false;
-
-      let lastSensorStep = 0;
-      this.subscription = Pedometer.watchStepCount((result) => {
-        if (this.isPaused) return;
-        const delta = result.steps - lastSensorStep;
-        if (delta > 0 && lastSensorStep > 0) {
-          this.addSteps(delta);
-        }
-        lastSensorStep = result.steps;
-      });
-
-      return true;
-    } catch (e) {
-      console.warn('Failed to start hardware pedometer tracking:', e);
-      return false;
-    }
+    const user = useUserStore.getState();
+    return nativeStepService.initService(user.dailyGoal);
   }
 
   /**
@@ -204,47 +206,42 @@ class StepService {
    */
   private startMidnightWatcher(): void {
     if (this.midnightCheckTimer) clearInterval(this.midnightCheckTimer);
-    // Check every 60 seconds
     this.midnightCheckTimer = setInterval(() => {
       this.checkDateChange();
     }, 60000);
   }
 
-  /**
-   * Resets counter when midnight crosses over into a new day.
-   */
-  private checkDateChange(): void {
+  private async checkDateChange(): Promise<void> {
     const today = getTodayDateString();
     if (today !== this.currentDate) {
       this.currentDate = today;
       this.currentSteps = 0;
+      await this.catchUpFromSensor();
       this.emit(this.getCurrentMetrics());
-
-      // Update live notification for fresh day
-      const user = useUserStore.getState();
-      if (user.notificationsEnabled) {
-        liveNotificationService.updateLiveStepNotification({
-          steps: 0,
-          goal: user.dailyGoal,
-          distanceKm: 0,
-          calories: 0,
-          activeMinutes: 0,
-          units: user.units,
-          language: user.language,
-          isPaused: this.isPaused,
-        });
-      }
     }
   }
 
-  private emit(event: StepUpdateEvent): void {
-    this.listeners.forEach((listener) => {
+  private emit(metrics: StepUpdateEvent): void {
+    this.listeners.forEach((l) => {
       try {
-        listener(event);
-      } catch (e) {
-        console.error('Error in stepService listener:', e);
+        l(metrics);
+      } catch (err) {
+        console.error('Step update listener error:', err);
       }
     });
+  }
+
+  destroy(): void {
+    if (this.midnightCheckTimer) {
+      clearInterval(this.midnightCheckTimer);
+      this.midnightCheckTimer = null;
+    }
+    if (this.nativeUnsubscribe) {
+      this.nativeUnsubscribe();
+      this.nativeUnsubscribe = null;
+    }
+    this.listeners.clear();
+    this.isInitialized = false;
   }
 }
 

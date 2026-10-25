@@ -30,6 +30,7 @@ import { notificationService } from '../services/notifications';
 import { liveNotificationService } from '../services/liveNotificationService';
 import { waterNotificationService } from '../services/waterNotificationService';
 import { stepService } from '../services/stepService';
+import { HiddenDebugModal } from '../components/HiddenDebugModal';
 
 interface SettingsScreenProps {
   onNavigateToProfile?: () => void;
@@ -67,6 +68,20 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [tempGoal, setTempGoal] = useState(String(dailyGoal));
   const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [debugModalVisible, setDebugModalVisible] = useState(false);
+  const [versionTapCount, setVersionTapCount] = useState(0);
+
+  const handleVersionTap = () => {
+    const nextCount = versionTapCount + 1;
+    if (nextCount >= 5) {
+      triggerHaptic('success');
+      setDebugModalVisible(true);
+      setVersionTapCount(0);
+    } else {
+      triggerHaptic('light');
+      setVersionTapCount(nextCount);
+    }
+  };
 
   const handleExportCsv = async () => {
     triggerHaptic('medium');
@@ -762,9 +777,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
         {/* Section 5: About */}
         <View style={[styles.section, { alignItems: 'center', marginTop: spacing.xl }]}>
-          <Text style={[typography.caption, { color: colors.textSecondary }]}>
-            StrideSync Mobile App • {t('version')} 2.0.0
-          </Text>
+          <TouchableOpacity activeOpacity={0.7} onPress={handleVersionTap}>
+            <Text style={[typography.caption, { color: colors.textSecondary }]}>
+              StrideSync Mobile App • {t('version')} 2.0.0
+            </Text>
+          </TouchableOpacity>
           <Text style={[typography.small, { color: colors.textMuted, marginTop: 4 }]}>
             Built with React Native & Expo • High Performance Animations
           </Text>
@@ -772,6 +789,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 
         <View style={{ height: 140 }} />
       </ScrollView>
+
+      {/* Hidden Hardware Debug Modal (Triggered by 5 taps on version) */}
+      <HiddenDebugModal visible={debugModalVisible} onClose={() => setDebugModalVisible(false)} />
 
       {/* Edit Goal Modal */}
       <Modal visible={goalModalVisible} transparent animationType="fade">

@@ -141,17 +141,17 @@ export const useStepsStore = create<StepsState>((set, get) => ({
   },
 
   syncSensorSteps: async () => {
-    const { isPedometerAvailable } = get();
-    if (!isPedometerAvailable) return;
-
     try {
-      const sensorSteps = await pedometerService.getTodayStepsFromSensor();
-      const currentSteps = get().todaySteps;
-
-      if (sensorSteps > currentSteps) {
-        const delta = sensorSteps - currentSteps;
-        await get().addSteps(delta);
-      }
+      await stepService.catchUpFromSensor();
+      const current = stepService.getCurrentMetrics();
+      set({
+        todaySteps: current.steps,
+        todayDistanceKm: current.distanceKm,
+        todayCalories: current.calories,
+        todayActiveMinutes: current.activeMinutes,
+        isGoalReached: current.goalReached,
+      });
+      await get().refreshHistoryAndSummaries();
     } catch (e) {
       console.warn('Failed to sync sensor steps:', e);
     }

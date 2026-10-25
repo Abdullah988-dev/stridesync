@@ -218,6 +218,154 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 4000);
   }
 
+  // --- 6. Simulator Mode Switcher: Guest vs Registered (Liquid Glass) ---
+  const modeBtnRegistered = document.getElementById('mode-btn-registered');
+  const modeBtnGuest = document.getElementById('mode-btn-guest');
+  const phoneScreen = document.getElementById('phone-screen-element');
+  const waterLockOverlay = document.getElementById('water-lock-overlay');
+  const themePaletteBar = document.getElementById('theme-palette-bar');
+  const memberTextEl = document.getElementById('demo-member-text');
+  const memberIconEl = document.getElementById('demo-member-icon');
+  const screenTitleEl = document.getElementById('demo-screen-title');
+
+  if (modeBtnRegistered && modeBtnGuest) {
+    modeBtnRegistered.addEventListener('click', () => {
+      modeBtnRegistered.classList.add('active');
+      modeBtnGuest.classList.remove('active');
+
+      if (phoneScreen) {
+        phoneScreen.classList.remove('guest-mode');
+        phoneScreen.classList.add('liquid-glass-mode');
+      }
+      if (waterLockOverlay) waterLockOverlay.style.display = 'none';
+      if (themePaletteBar) themePaletteBar.style.display = 'flex';
+      if (memberTextEl) memberTextEl.textContent = 'PREMIUM MEMBER';
+      if (memberIconEl) memberIconEl.className = 'fa-solid fa-crown text-amber';
+      if (screenTitleEl) screenTitleEl.textContent = 'Activity Dashboard';
+      showToast('✨ Switched to Registered Mode: Liquid Glass UI & Premium Features Unlocked!');
+    });
+
+    modeBtnGuest.addEventListener('click', () => {
+      modeBtnGuest.classList.add('active');
+      modeBtnRegistered.classList.remove('active');
+
+      if (phoneScreen) {
+        phoneScreen.classList.remove('liquid-glass-mode');
+        phoneScreen.classList.add('guest-mode');
+      }
+      if (waterLockOverlay) waterLockOverlay.style.display = 'flex';
+      if (themePaletteBar) themePaletteBar.style.display = 'none';
+      if (memberTextEl) memberTextEl.textContent = 'GUEST (No Account)';
+      if (memberIconEl) memberIconEl.className = 'fa-solid fa-user';
+      if (screenTitleEl) screenTitleEl.textContent = 'Basic Step Counter';
+      showToast('👤 Switched to Guest Mode: Plain Solid UI (Water & History Locked).');
+    });
+  }
+
+  // --- 7. Theme Palette Switcher (Aurora, Sunset, Ocean, Forest, Rose, Graphite) ---
+  const themeDots = document.querySelectorAll('.theme-dot-btn');
+  const meshBlobs = {
+    blob1: document.querySelector('.blob-violet'),
+    blob2: document.querySelector('.blob-cyan'),
+    blob3: document.querySelector('.blob-pink'),
+  };
+
+  const THEME_GRADIENTS = {
+    aurora: { b1: '#7C3AED', b2: '#06B6D4', b3: '#EC4899', name: 'Aurora' },
+    sunset: { b1: '#F97316', b2: '#EC4899', b3: '#8B5CF6', name: 'Sunset' },
+    ocean: { b1: '#0EA5E9', b2: '#2563EB', b3: '#14B8A6', name: 'Ocean' },
+    forest: { b1: '#16A34A', b2: '#84CC16', b3: '#0D9488', name: 'Forest' },
+    rose: { b1: '#F43F5E', b2: '#FB7185', b3: '#F59E0B', name: 'Rose' },
+    graphite: { b1: '#334155', b2: '#64748B', b3: '#94A3B8', name: 'Graphite' },
+  };
+
+  themeDots.forEach((dot) => {
+    dot.addEventListener('click', () => {
+      themeDots.forEach((d) => d.classList.remove('active'));
+      dot.classList.add('active');
+
+      const themeKey = dot.getAttribute('data-theme') || 'aurora';
+      const colors = THEME_GRADIENTS[themeKey];
+      if (colors && meshBlobs.blob1 && meshBlobs.blob2 && meshBlobs.blob3) {
+        meshBlobs.blob1.style.background = colors.b1;
+        meshBlobs.blob2.style.background = colors.b2;
+        meshBlobs.blob3.style.background = colors.b3;
+        showToast(`🎨 Liquid Glass Theme: ${colors.name} applied!`);
+      }
+    });
+  });
+
+  // --- 8. "Paani pi lo" Interactive Urdu Voice Audio Preview ---
+  const btnPreviewVoice = document.getElementById('btn-preview-voice');
+  const voiceBtnText = document.getElementById('voice-btn-text');
+  const voiceIcon = document.getElementById('voice-icon');
+
+  function playAlertChime() {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (e) {}
+  }
+
+  function speakPaaniPiLo() {
+    playAlertChime();
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const textToSpeak = "پانی پی لو! ایک گلاس پانی پی لیں۔";
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.05;
+
+      // Attempt to pick an Urdu or Hindi natural voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const urduVoice = voices.find((v) => v.lang.startsWith('ur') || v.lang.startsWith('hi'));
+      if (urduVoice) {
+        utterance.voice = urduVoice;
+      }
+
+      utterance.onend = () => {
+        if (voiceBtnText) voiceBtnText.textContent = 'Listen to "Paani pi lo" Voice Reminder Preview';
+        if (voiceIcon) voiceIcon.className = 'fa-solid fa-volume-high';
+      };
+
+      utterance.onerror = () => {
+        // Fallback English voice if Urdu engine not installed on user's OS
+        const fallback = new SpeechSynthesisUtterance("Paani pi lo! Time to drink a glass of water.");
+        fallback.onend = () => {
+          if (voiceBtnText) voiceBtnText.textContent = 'Listen to "Paani pi lo" Voice Reminder Preview';
+          if (voiceIcon) voiceIcon.className = 'fa-solid fa-volume-high';
+        };
+        window.speechSynthesis.speak(fallback);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+  }
+
+  if (btnPreviewVoice) {
+    btnPreviewVoice.addEventListener('click', () => {
+      if (voiceBtnText) voiceBtnText.textContent = 'Speaking: "Paani pi lo..." 🔊';
+      if (voiceIcon) voiceIcon.className = 'fa-solid fa-volume-high fa-beat';
+      speakPaaniPiLo();
+      showToast('🔊 Playing Urdu voice alert: "پانی پی لو! ایک گلاس پانی پی لیں"');
+    });
+  }
+
   // Initialize display
   updateSimulatorUI(currentSteps);
 });
