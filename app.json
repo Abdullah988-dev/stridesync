@@ -1,25 +1,71 @@
 {
   "expo": {
-    "name": "tracker",
-    "slug": "tracker",
+    "name": "StrideSync",
+    "slug": "stridesync",
+    "scheme": "stridesync",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.stridesync.steptracker",
+      "infoPlist": {
+        "NSMotionUsageDescription": "StrideSync uses motion sensors to track your daily steps, distance, and calories accurately."
+      }
     },
     "android": {
+      "package": "com.stridesync.steptracker",
+      "versionCode": 1,
+      "predictiveBackGestureEnabled": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#0F172A",
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "monochromeImage": "./assets/adaptive-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "permissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_HEALTH",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0F172A",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow StrideSync to access your device motion sensors to accurately count your daily steps."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#10B981"
+        }
+      ],
+      "expo-sharing",
+      "expo-sqlite",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "61c1badc-b1cc-4f96-9d8c-f60671c2661c"
+      }
     }
   }
 }

@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#0EA5E9" />
+    </linearGradient>
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#38BDF8" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="24" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background Card -->
+  <rect width="1024" height="1024" rx="220" fill="url(#bgGradient)" />
+  <circle cx="512" cy="512" r="372" fill="#0B0F19" />
+
+  <!-- Progress Track -->
+  <circle cx="512" cy="512" r="310" stroke="#1E293B" stroke-width="36" fill="none" />
+  
+  <!-- Progress Active Arc -->
+  <circle cx="512" cy="512" r="310" stroke="url(#ringGradient)" stroke-width="36" stroke-linecap="round" fill="none"
+          stroke-dasharray="1947" stroke-dashoffset="650" transform="rotate(-90 512 512)" filter="url(#glow)" />
+
+  <!-- Runner Stride Footprints & Spark -->
+  <g fill="#FFFFFF">
+    <!-- Left Sole & Heel -->
+    <ellipse cx="410" cy="550" rx="48" ry="110" />
+    <ellipse cx="410" cy="710" rx="40" ry="70" />
+
+    <!-- Right Sole & Heel (Forward stride) -->
+    <ellipse cx="614" cy="430" rx="48" ry="110" />
+    <ellipse cx="614" cy="590" rx="40" ry="70" />
+
+    <!-- Speed Spark -->
+    <polygon points="680,250 640,330 700,330 650,420 740,320 680,320" fill="#38BDF8" />
+  </g>
+</svg>
