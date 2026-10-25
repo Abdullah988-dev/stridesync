@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Gender, UnitSystem } from '../utils/calculations';
 import { ThemeMode } from '../theme/themeContext';
+import { GlassThemeId } from '../theme/glassTheme';
 import { SupportedLanguage } from '../i18n/translations';
 import { notificationService } from '../services/notifications';
 import { liveNotificationService } from '../services/liveNotificationService';
@@ -15,6 +16,7 @@ export interface UserProfile {
   dailyGoal: number;
   units: UnitSystem;
   theme: ThemeMode;
+  glassTheme: GlassThemeId;
   language: SupportedLanguage;
   notificationsEnabled: boolean;
   isOnboarded: boolean;
@@ -27,6 +29,7 @@ interface UserState extends UserProfile {
   completeOnboarding: (profile: Partial<UserProfile>) => Promise<void>;
   setDailyGoal: (goal: number) => Promise<void>;
   setTheme: (theme: ThemeMode) => Promise<void>;
+  setGlassTheme: (glassTheme: GlassThemeId) => Promise<void>;
   setLanguage: (language: SupportedLanguage) => Promise<void>;
   setUnits: (units: UnitSystem) => Promise<void>;
   setNotificationsEnabled: (enabled: boolean) => Promise<void>;
@@ -44,6 +47,7 @@ const defaultProfile: UserProfile = {
   dailyGoal: 10000,
   units: 'metric',
   theme: 'dark',
+  glassTheme: 'aurora',
   language: 'en',
   notificationsEnabled: true,
   isOnboarded: false,
@@ -79,6 +83,7 @@ export const useUserStore = create<UserState>((set, get) => ({
       dailyGoal: updates.dailyGoal ?? current.dailyGoal,
       units: updates.units ?? current.units,
       theme: updates.theme ?? current.theme,
+      glassTheme: updates.glassTheme ?? current.glassTheme,
       language: updates.language ?? current.language,
       notificationsEnabled: updates.notificationsEnabled ?? current.notificationsEnabled,
       isOnboarded: updates.isOnboarded ?? current.isOnboarded,
@@ -102,6 +107,10 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   setTheme: async (theme) => {
     await get().updateUserProfile({ theme });
+  },
+
+  setGlassTheme: async (glassTheme) => {
+    await get().updateUserProfile({ glassTheme });
   },
 
   setLanguage: async (language) => {

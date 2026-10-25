@@ -27,6 +27,8 @@ interface AnimatedRingProps {
   size?: number;
   strokeWidth?: number;
   isWalking?: boolean;
+  gradientColors?: [string, string, string];
+  glowColor?: string;
 }
 
 export const AnimatedRing: React.FC<AnimatedRingProps> = ({
@@ -35,6 +37,8 @@ export const AnimatedRing: React.FC<AnimatedRingProps> = ({
   size = 260,
   strokeWidth = 20,
   isWalking = true,
+  gradientColors,
+  glowColor,
 }) => {
   const { colors, typography, borderRadius } = useAppTheme();
   const { t } = useTranslation();
@@ -122,7 +126,7 @@ export const AnimatedRing: React.FC<AnimatedRingProps> = ({
             width: size - 10,
             height: size - 10,
             borderRadius: borderRadius.full,
-            backgroundColor: isGoalReached ? 'rgba(52, 211, 153, 0.15)' : colors.ringGlow,
+            backgroundColor: glowColor || (isGoalReached ? 'rgba(52, 211, 153, 0.25)' : colors.ringGlow),
           },
           glowStyle,
         ]}
@@ -131,9 +135,30 @@ export const AnimatedRing: React.FC<AnimatedRingProps> = ({
       <Svg width={size} height={size} style={styles.svg}>
         <Defs>
           <LinearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <Stop offset="0%" stopColor={colors.primary} />
-            <Stop offset="50%" stopColor={isGoalReached ? '#34D399' : colors.secondary} />
-            <Stop offset="100%" stopColor={isGoalReached ? '#F59E0B' : '#06B6D4'} />
+            <Stop
+              offset="0%"
+              stopColor={gradientColors ? gradientColors[0] : colors.primary}
+            />
+            <Stop
+              offset="50%"
+              stopColor={
+                gradientColors
+                  ? gradientColors[1]
+                  : isGoalReached
+                  ? '#34D399'
+                  : colors.secondary
+              }
+            />
+            <Stop
+              offset="100%"
+              stopColor={
+                gradientColors
+                  ? gradientColors[2]
+                  : isGoalReached
+                  ? '#F59E0B'
+                  : '#06B6D4'
+              }
+            />
           </LinearGradient>
         </Defs>
 

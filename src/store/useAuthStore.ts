@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { triggerHaptic } from '../utils/soundHaptics';
 import { useAchievementsStore } from './useAchievementsStore';
+import { waterNotificationService } from '../services/waterNotificationService';
 
 export interface UserAccount {
   name: string;
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isAuthenticated: true, isGuest: false, user, isLoaded: true });
         // Ensure member badge is unlocked for registered users
         useAchievementsStore.getState().unlockBadge('badge_member');
+        await waterNotificationService.scheduleHydrationReminders();
         return;
       }
 
@@ -49,8 +51,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         user: null,
         isLoaded: true,
       });
+      await waterNotificationService.cancelHydrationReminders();
     } catch {
       set({ isAuthenticated: false, isGuest: true, user: null, isLoaded: true });
+      await waterNotificationService.cancelHydrationReminders();
     }
   },
 
@@ -100,6 +104,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isAuthenticated: true, isGuest: false, user: sessionUser });
       await triggerHaptic('success');
       await useAchievementsStore.getState().unlockBadge('badge_member');
+      await waterNotificationService.scheduleHydrationReminders();
       return { success: true };
     } catch {
       return { success: false, error: 'Failed to create account. Please try again.' };
@@ -134,6 +139,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ isAuthenticated: true, isGuest: false, user: sessionUser });
       await triggerHaptic('success');
       await useAchievementsStore.getState().unlockBadge('badge_member');
+      await waterNotificationService.scheduleHydrationReminders();
       return { success: true };
     } catch {
       return { success: false, error: 'Sign in failed. Please try again.' };
@@ -145,6 +151,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.removeItem(AUTH_USER_KEY);
       await AsyncStorage.setItem(GUEST_FLAG_KEY, 'true');
       set({ isAuthenticated: false, isGuest: true, user: null });
+      await waterNotificationService.cancelHydrationReminders();
       await triggerHaptic('light');
     } catch {}
   },
@@ -154,6 +161,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await AsyncStorage.removeItem(AUTH_USER_KEY);
       await AsyncStorage.setItem(GUEST_FLAG_KEY, 'true');
       set({ isAuthenticated: false, isGuest: true, user: null });
+      await waterNotificationService.cancelHydrationReminders();
       await triggerHaptic('light');
     } catch {}
   },

@@ -9,8 +9,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useAppTheme } from '../../theme/themeContext';
 import { useTranslation } from '../../i18n/i18nContext';
+import { useAuthStore } from '../../store/useAuthStore';
+import { useUserStore } from '../../store/useUserStore';
+import { getGlassTheme, GlassThemeId } from '../../theme/glassTheme';
 import { triggerHaptic } from '../../utils/soundHaptics';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -24,6 +28,11 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
   const { isRTL } = useTranslation();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
+
+  const { isAuthenticated, isGuest } = useAuthStore();
+  const glassThemeId = useUserStore((s) => s.glassTheme as GlassThemeId) || 'aurora';
+  const isMember = isAuthenticated && !isGuest;
+  const currentTheme = getGlassTheme(glassThemeId);
 
   const numTabs = state.routes.length;
   // Margined floating bottom bar
@@ -68,13 +77,23 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
         style={[
           styles.container,
           {
-            backgroundColor: colors.surfaceGlass,
-            borderColor: colors.cardGlassBorder,
+            backgroundColor: isMember ? currentTheme.glassCardBg : colors.surface,
+            borderColor: isMember ? currentTheme.glassBorder : colors.cardBorder,
             borderRadius: borderRadius.xxl,
             width: barWidth,
+            overflow: 'hidden',
           },
         ]}
       >
+        {/* Background Frosted Glass Blur for Registered Members */}
+        {isMember && (
+          <BlurView
+            intensity={45}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+
         {/* Sliding Pill Indicator */}
         <Animated.View
           style={[
@@ -83,7 +102,7 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
               width: tabWidth - 12,
               marginHorizontal: 6,
               borderRadius: borderRadius.xl,
-              backgroundColor: colors.primaryLight,
+              backgroundColor: isMember ? 'rgba(255, 255, 255, 0.12)' : colors.primaryLight,
             },
             indicatorStyle,
           ]}
@@ -108,6 +127,8 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
             return isFocused ? 'settings' : 'settings-outline';
           };
 
+          const activeColor = isMember ? currentTheme.primary : colors.primaryDark;
+
           const onPress = () => {
             const event = navigation.emit({
               type: 'tabPress',
@@ -131,13 +152,13 @@ export const AnimatedTabBar: React.FC<BottomTabBarProps> = ({
               <Ionicons
                 name={getIconName()}
                 size={isFocused ? 24 : 22}
-                color={isFocused ? colors.primaryDark : colors.textMuted}
+                color={isFocused ? activeColor : colors.textMuted}
               />
               <Text
                 style={[
                   typography.small,
                   {
-                    color: isFocused ? colors.primaryDark : colors.textMuted,
+                    color: isFocused ? activeColor : colors.textMuted,
                     marginTop: 2,
                     fontWeight: isFocused ? '700' : '500',
                   },

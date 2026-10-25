@@ -4,14 +4,21 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { useAppTheme } from '../theme/themeContext';
 import { useTranslation } from '../i18n/i18nContext';
 import { useAchievementsStore } from '../store/useAchievementsStore';
 import { useStepsStore } from '../store/useStepsStore';
+import { useAuthStore } from '../store/useAuthStore';
+import { MeshBackground } from '../components/common/MeshBackground';
+import { GlassCard } from '../components/common/GlassCard';
 import { Header } from '../components/common/Header';
 import { BadgeCard } from '../components/BadgeCard';
 import { Card } from '../components/common/Card';
@@ -24,11 +31,14 @@ type FilterCategory = 'all' | 'steps' | 'streak' | 'distance' | 'milestone';
 export const AchievementsScreen: React.FC = () => {
   const { colors, typography, spacing, borderRadius } = useAppTheme();
   const { t, isRTL } = useTranslation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const { badges } = useAchievementsStore();
   const { currentStreak, longestStreak } = useStepsStore();
+  const { isAuthenticated, isGuest } = useAuthStore();
   const [selectedCategory, setSelectedCategory] = useState<FilterCategory>('all');
 
+  const isMember = isAuthenticated && !isGuest;
   const unlockedCount = badges.filter((b) => b.unlockedAt).length;
 
   const filteredBadges =
@@ -45,145 +55,198 @@ export const AchievementsScreen: React.FC = () => {
   ];
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title={t('achievementsTitle')} />
+    <MeshBackground>
+      <SafeAreaView style={styles.container}>
+        <Header title={t('achievementsTitle')} />
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Streak Hero Banner with Flame Glow */}
-        <StaggerItem index={0}>
-          <Card
-            style={[
-              styles.streakCard,
-              {
-                backgroundColor: colors.surfaceGlass,
-                borderColor: colors.cardGlassBorder,
-                marginTop: spacing.sm,
-              },
-            ]}
-          >
-            <View style={[styles.streakRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-              {currentStreak > 0 ? (
-                <LinearGradient
-                  colors={colors.flameGradient || [colors.accent, '#FF9500']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.flameCircle, { borderRadius: borderRadius.full }]}
-                >
-                  <Ionicons name="flame" size={36} color="#FFFFFF" />
-                </LinearGradient>
-              ) : (
-                <View
-                  style={[
-                    styles.flameCircle,
-                    {
-                      backgroundColor: colors.divider,
-                      borderRadius: borderRadius.full,
-                    },
-                  ]}
-                >
-                  <Ionicons name="flame" size={36} color={colors.textMuted} />
-                </View>
-              )}
-
-              <View style={{ flex: 1, marginHorizontal: spacing.md }}>
-                <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                  {t('currentStreak')}
-                </Text>
-                <Text style={[typography.h1, { color: colors.text, marginTop: 2 }]}>
-                  {currentStreak} {t('daysStreak')}
-                </Text>
-                <Text style={[typography.small, { color: colors.textMuted, marginTop: 2 }]}>
-                  {t('bestStreak')}: {longestStreak} days
-                </Text>
-              </View>
-
-              <View
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Guest Mode Banner */}
+          {!isMember && (
+            <StaggerItem index={0}>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate('Auth', { mode: 'register' })}
                 style={[
-                  styles.unlockedCounterPill,
+                  styles.guestBanner,
                   {
-                    backgroundColor: colors.primaryLight,
-                    borderRadius: borderRadius.full,
+                    backgroundColor: colors.surface,
+                    borderColor: 'rgba(234, 179, 8, 0.35)',
+                    borderRadius: borderRadius.xl,
                   },
                 ]}
               >
-                <Ionicons name="trophy" size={14} color={colors.primaryDark} style={{ marginRight: 4 }} />
-                <Text style={[typography.small, { color: colors.primaryDark, fontWeight: '700' }]}>
-                  {unlockedCount} / {badges.length}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        </StaggerItem>
+                <View style={[styles.guestBannerIcon, { backgroundColor: 'rgba(234, 179, 8, 0.15)' }]}>
+                  <Ionicons name="trophy" size={20} color="#EAB308" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={[typography.bodyBold, { color: colors.text }]}>
+                    Claim Your Milestone Badges
+                  </Text>
+                  <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
+                    Register your free account to record permanent streak badges & unlock Liquid Glass.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </StaggerItem>
+          )}
 
-        {/* Category Filter Chips */}
-        <StaggerItem index={1}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.categoryChipsScroll,
-              {
-                flexDirection: isRTL ? 'row-reverse' : 'row',
-                marginVertical: spacing.lg,
-                paddingRight: isRTL ? 0 : 32,
-                paddingLeft: isRTL ? 32 : 0,
-              },
-            ]}
-          >
-            {categories.map((cat) => {
-              const isSelected = selectedCategory === cat.key;
-              return (
-                <PressableScale
-                  key={cat.key}
-                  onPress={() => {
-                    triggerHaptic('light');
-                    setSelectedCategory(cat.key);
-                  }}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: isSelected ? colors.primary : colors.surfaceGlass,
-                      borderColor: isSelected ? colors.primary : colors.cardGlassBorder,
-                      borderRadius: borderRadius.full,
-                      marginRight: isRTL ? 0 : 8,
-                      marginLeft: isRTL ? 8 : 0,
-                    },
-                  ]}
-                >
-                  <Text
+          {/* Streak Hero Banner */}
+          <StaggerItem index={1}>
+            <GlassCard
+              variant="glow"
+              style={[
+                styles.streakCard,
+                {
+                  marginTop: spacing.sm,
+                },
+              ]}
+            >
+              <View style={[styles.streakRow, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                {currentStreak > 0 ? (
+                  <LinearGradient
+                    colors={colors.flameGradient || [colors.accent, '#FF9500']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.flameCircle, { borderRadius: borderRadius.full }]}
+                  >
+                    <Ionicons name="flame" size={36} color="#FFFFFF" />
+                  </LinearGradient>
+                ) : (
+                  <View
                     style={[
-                      typography.caption,
+                      styles.flameCircle,
                       {
-                        color: isSelected ? '#FFFFFF' : colors.textSecondary,
-                        fontWeight: isSelected ? '700' : '500',
+                        backgroundColor: colors.divider,
+                        borderRadius: borderRadius.full,
                       },
                     ]}
                   >
-                    {cat.label}
+                    <Ionicons name="flame" size={36} color={colors.textMuted} />
+                  </View>
+                )}
+
+                <View style={{ flex: 1, marginHorizontal: spacing.md }}>
+                  <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                    {t('currentStreak')}
                   </Text>
-                </PressableScale>
-              );
-            })}
-          </ScrollView>
-        </StaggerItem>
+                  <Text style={[typography.h1, { color: colors.text, marginTop: 2 }]}>
+                    {currentStreak} {t('daysStreak')}
+                  </Text>
+                  <Text style={[typography.small, { color: colors.textMuted, marginTop: 2 }]}>
+                    {t('bestStreak')}: {longestStreak} days
+                  </Text>
+                </View>
 
-        {/* Badges 2-column Grid with Stagger & 3D Flip */}
-        <View style={styles.grid}>
-          {filteredBadges.map((badge, idx) => (
-            <View key={badge.id} style={styles.gridColumn}>
-              <StaggerItem index={Math.min(idx + 2, 8)}>
-                <BadgeCard badge={badge} />
-              </StaggerItem>
-            </View>
-          ))}
-        </View>
+                <View
+                  style={[
+                    styles.unlockedCounterPill,
+                    {
+                      backgroundColor: isMember ? 'rgba(56, 189, 248, 0.2)' : colors.primaryLight,
+                      borderRadius: borderRadius.full,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="trophy"
+                    size={14}
+                    color={isMember ? '#38BDF8' : colors.primaryDark}
+                    style={{ marginRight: 4 }}
+                  />
+                  <Text
+                    style={[
+                      typography.small,
+                      {
+                        color: isMember ? '#38BDF8' : colors.primaryDark,
+                        fontWeight: '700',
+                      },
+                    ]}
+                  >
+                    {unlockedCount} / {badges.length}
+                  </Text>
+                </View>
+              </View>
+            </GlassCard>
+          </StaggerItem>
 
-        <View style={{ height: 60 }} />
-      </ScrollView>
-    </SafeAreaView>
+          {/* Category Filter Chips */}
+          <StaggerItem index={2}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[
+                styles.categoryChipsScroll,
+                {
+                  flexDirection: isRTL ? 'row-reverse' : 'row',
+                  marginVertical: spacing.lg,
+                  paddingRight: isRTL ? 0 : 32,
+                  paddingLeft: isRTL ? 32 : 0,
+                },
+              ]}
+            >
+              {categories.map((cat) => {
+                const isSelected = selectedCategory === cat.key;
+                return (
+                  <PressableScale
+                    key={cat.key}
+                    onPress={() => {
+                      triggerHaptic('light');
+                      setSelectedCategory(cat.key);
+                    }}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: isSelected
+                          ? colors.primary
+                          : isMember
+                          ? 'rgba(255, 255, 255, 0.06)'
+                          : colors.surface,
+                        borderColor: isSelected
+                          ? colors.primary
+                          : isMember
+                          ? 'rgba(255, 255, 255, 0.12)'
+                          : colors.cardBorder,
+                        borderRadius: borderRadius.full,
+                        marginRight: isRTL ? 0 : 8,
+                        marginLeft: isRTL ? 8 : 0,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        typography.small,
+                        {
+                          color: isSelected ? '#FFFFFF' : colors.textSecondary,
+                          fontWeight: isSelected ? '700' : '500',
+                        },
+                      ]}
+                    >
+                      {cat.label}
+                    </Text>
+                  </PressableScale>
+                );
+              })}
+            </ScrollView>
+          </StaggerItem>
+
+          {/* 2-Column Badges Grid */}
+          <View style={styles.grid}>
+            {filteredBadges.map((badge, index) => (
+              <View key={badge.id} style={styles.gridColumn}>
+                <StaggerItem index={Math.min(index + 3, 12)} direction="up">
+                  <BadgeCard badge={badge} />
+                </StaggerItem>
+              </View>
+            ))}
+          </View>
+
+          <View style={{ height: 60 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </MeshBackground>
   );
 };
 
@@ -194,8 +257,22 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 160,
   },
+  guestBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderWidth: 1.5,
+    marginVertical: 10,
+  },
+  guestBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   streakCard: {
-    borderWidth: 1,
+    marginVertical: 4,
   },
   streakRow: {
     alignItems: 'center',

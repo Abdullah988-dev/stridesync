@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useAppTheme } from '../theme/themeContext';
 import { useWaterStore } from '../store/useWaterStore';
 import { useAuthStore } from '../store/useAuthStore';
@@ -13,8 +14,8 @@ interface WaterTrackerCardProps {
 }
 
 export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPress }) => {
-  const { colors, typography, borderRadius } = useAppTheme();
-  const { isAuthenticated } = useAuthStore();
+  const { colors, typography, borderRadius, spacing } = useAppTheme();
+  const { isAuthenticated, isGuest } = useAuthStore();
   const {
     todayWaterMl,
     dailyGoalMl,
@@ -23,6 +24,8 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
     addGlass,
     removeGlass,
   } = useWaterStore();
+
+  const isMember = isAuthenticated && !isGuest;
 
   useEffect(() => {
     loadWater();
@@ -33,23 +36,27 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
   const percent = Math.min(100, Math.round((todayWaterMl / dailyGoalMl) * 100));
 
   const handleAddGlass = async () => {
+    if (!isMember) return;
+    await triggerHaptic('medium');
     await addGlass();
     const updatedGlasses = glassesDrunk + 1;
-    // Trigger notification
+    // Trigger notification alert with sound (only registered members)
     await waterNotificationService.triggerWaterLoggedNotification(updatedGlasses, totalGlasses);
   };
 
   const handleRemoveGlass = async () => {
+    if (!isMember) return;
+    await triggerHaptic('light');
     await removeGlass();
   };
 
-  // 1. Guest / Locked State
-  if (!isAuthenticated) {
+  // 1. GUEST MODE: Clean solid matte locked card (NO audio, NO notifications)
+  if (!isMember) {
     return (
       <View
         style={[
           styles.container,
-          styles.lockedContainer,
+          styles.guestContainer,
           {
             backgroundColor: colors.surface,
             borderColor: colors.cardBorder,
@@ -61,7 +68,7 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
           <View style={[styles.lockedIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
             <Ionicons name="water" size={24} color="#38BDF8" />
             <View style={styles.smallLock}>
-              <Ionicons name="lock-closed" size={12} color="#FFFFFF" />
+              <Ionicons name="lock-closed" size={11} color="#FFFFFF" />
             </View>
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
@@ -69,10 +76,10 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
               <Text style={styles.lockedBadge}>MEMBER EXCLUSIVE</Text>
             </View>
             <Text style={[typography.bodyBold, { color: colors.text, marginTop: 2 }]}>
-              Daily Water & Hydration Goals
+              Daily Water & Hydration Tracking
             </Text>
             <Text style={[typography.caption, { color: colors.textSecondary, marginTop: 2 }]}>
-              Track 8 daily glasses (2,000 ml) and get smart hydration alerts.
+              Track 8 daily glasses (2,000 ml) and get timely 'Paani pi lo' audio reminders.
             </Text>
           </View>
         </View>
@@ -89,33 +96,49 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
             style={[styles.unlockButton, { borderRadius: borderRadius.lg }]}
           >
             <Ionicons name="sparkles" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-            <Text style={styles.unlockButtonText}>Register / Sign In to Unlock</Text>
+            <Text style={styles.unlockButtonText}>Register Free to Unlock Water & Audio Alerts</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // 2. Unlocked / Active State for Registered Users
+  // 2. REGISTERED USER: Frosted Liquid Glass Card with active tracker
   return (
     <View
       style={[
         styles.container,
+        styles.glassContainer,
         {
-          backgroundColor: colors.surface,
-          borderColor: 'rgba(14, 165, 233, 0.35)',
           borderRadius: borderRadius.xxl,
+          borderColor: 'rgba(56, 189, 248, 0.35)',
         },
       ]}
     >
+      {/* Background Frosted Glass Blur */}
+      <BlurView
+        intensity={40}
+        tint="dark"
+        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(8, 47, 73, 0.55)' }]}
+      />
+
+      {/* Top Specular Reflection Highlight */}
+      <LinearGradient
+        colors={['rgba(255, 255, 255, 0.18)', 'rgba(255, 255, 255, 0.02)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.specularGradient}
+        pointerEvents="none"
+      />
+
       {/* Top Header */}
       <View style={styles.activeHeader}>
         <View style={styles.headerTitleRow}>
-          <View style={[styles.waterIconBox, { backgroundColor: 'rgba(14, 165, 233, 0.18)' }]}>
+          <View style={[styles.waterIconBox, { backgroundColor: 'rgba(14, 165, 233, 0.22)' }]}>
             <Ionicons name="water" size={22} color="#38BDF8" />
           </View>
           <View style={{ marginLeft: 10 }}>
-            <Text style={[typography.bodyBold, { color: colors.text }]}>Daily Water Tracker</Text>
+            <Text style={[typography.bodyBold, { color: '#FFFFFF' }]}>Daily Water Tracker</Text>
             <Text style={[typography.small, { color: '#38BDF8', fontWeight: '700' }]}>
               {todayWaterMl} / {dailyGoalMl} ml ({glassesDrunk} of {totalGlasses} glasses)
             </Text>
@@ -158,21 +181,21 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
                 style={[
                   styles.glassCircle,
                   {
-                    backgroundColor: isDrunk ? '#0284C7' : 'rgba(255, 255, 255, 0.05)',
-                    borderColor: isDrunk ? '#38BDF8' : colors.cardBorder,
+                    backgroundColor: isDrunk ? '#0284C7' : 'rgba(255, 255, 255, 0.06)',
+                    borderColor: isDrunk ? '#38BDF8' : 'rgba(255, 255, 255, 0.15)',
                   },
                 ]}
               >
                 <Ionicons
                   name={isDrunk ? 'water' : 'water-outline'}
                   size={16}
-                  color={isDrunk ? '#FFFFFF' : colors.textMuted}
+                  color={isDrunk ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)'}
                 />
               </View>
               <Text
                 style={[
                   styles.glassLabel,
-                  { color: isDrunk ? '#38BDF8' : colors.textMuted },
+                  { color: isDrunk ? '#38BDF8' : 'rgba(255, 255, 255, 0.4)' },
                 ]}
               >
                 #{index + 1}
@@ -207,13 +230,13 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
             style={[
               styles.undoBtn,
               {
-                borderColor: colors.cardBorder,
-                backgroundColor: colors.surfaceGlass,
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 borderRadius: borderRadius.lg,
               },
             ]}
           >
-            <Ionicons name="remove-circle-outline" size={16} color={colors.textSecondary} />
+            <Ionicons name="remove-circle-outline" size={16} color="#FFFFFF" />
           </TouchableOpacity>
         )}
       </View>
@@ -224,16 +247,27 @@ export const WaterTrackerCard: React.FC<WaterTrackerCardProps> = ({ onUnlockPres
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     marginVertical: 8,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  lockedContainer: {
-    opacity: 0.95,
+  guestContainer: {
+    borderWidth: 1,
+  },
+  glassContainer: {
+    shadowColor: '#0EA5E9',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  specularGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 48,
   },
   lockedHeader: {
     flexDirection: 'row',
@@ -276,12 +310,13 @@ const styles = StyleSheet.create({
   unlockButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
-    fontSize: 13.5,
+    fontSize: 13,
   },
   activeHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    zIndex: 1,
   },
   headerTitleRow: {
     flexDirection: 'row',
@@ -295,31 +330,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   percentPill: {
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.4)',
   },
   percentPillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#38BDF8',
   },
   progressBarTrack: {
-    height: 10,
+    height: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 5,
-    marginVertical: 12,
+    borderRadius: 4,
+    marginVertical: 14,
     overflow: 'hidden',
+    zIndex: 1,
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 5,
+    borderRadius: 4,
   },
   glassesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 6,
+    alignItems: 'center',
+    marginVertical: 8,
+    zIndex: 1,
   },
   glassItem: {
     alignItems: 'center',
@@ -328,19 +368,20 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
   },
   glassLabel: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '600',
-    marginTop: 3,
+    marginTop: 4,
   },
   actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
+    zIndex: 1,
   },
   addGlassBtn: {
     flex: 1,
@@ -359,9 +400,9 @@ const styles = StyleSheet.create({
   undoBtn: {
     width: 42,
     height: 42,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+    borderWidth: 1,
   },
 });

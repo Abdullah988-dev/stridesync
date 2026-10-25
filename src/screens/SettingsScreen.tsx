@@ -19,6 +19,10 @@ import { useUserStore } from '../store/useUserStore';
 import { useStepsStore } from '../store/useStepsStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useWaterStore } from '../store/useWaterStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MeshBackground } from '../components/common/MeshBackground';
+import { GLASS_THEMES, GlassThemeId, GlassThemeConfig } from '../theme/glassTheme';
+import { ThemePickerModal } from '../components/ThemePickerModal';
 import { Header } from '../components/common/Header';
 import { Button } from '../components/common/Button';
 import { PressableScale } from '../components/animated/PressableScale';
@@ -50,24 +54,29 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     dailyGoal,
     units,
     theme,
+    glassTheme,
     language,
     notificationsEnabled,
     setDailyGoal,
     setUnits,
     setTheme,
+    setGlassTheme,
     setLanguage,
     setNotificationsEnabled,
     resetUserData,
   } = useUserStore();
 
   const { history, resetAllStepData } = useStepsStore();
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, isGuest, user, logout } = useAuthStore();
   const { dailyGoalMl, setDailyGoal: setWaterGoal } = useWaterStore();
+
+  const isMember = isAuthenticated && !isGuest;
 
   const [isExporting, setIsExporting] = useState(false);
   const [goalModalVisible, setGoalModalVisible] = useState(false);
   const [tempGoal, setTempGoal] = useState(String(dailyGoal));
   const [resetModalVisible, setResetModalVisible] = useState(false);
+  const [themePickerVisible, setThemePickerVisible] = useState(false);
   const [debugModalVisible, setDebugModalVisible] = useState(false);
   const [versionTapCount, setVersionTapCount] = useState(0);
 
@@ -170,110 +179,116 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title={t('settingsTitle')} />
+    <MeshBackground>
+      <SafeAreaView style={styles.container}>
+        <ThemePickerModal
+          visible={themePickerVisible}
+          onClose={() => setThemePickerVisible(false)}
+          onNavigateToAuth={() => onNavigateToAuth?.('register')}
+        />
+        <Header title={t('settingsTitle')} />
 
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg }]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Account / Membership Section */}
-        <StaggerItem index={0}>
-          <View
-            style={[
-              styles.accountCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: isAuthenticated ? 'rgba(16, 185, 129, 0.4)' : colors.cardBorder,
-                borderRadius: borderRadius.xl,
-              },
-            ]}
-          >
-            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}>
-              <View
-                style={[
-                  styles.accountAvatar,
-                  { backgroundColor: isAuthenticated ? colors.primaryLight : colors.divider },
-                ]}
-              >
-                <Ionicons
-                  name={isAuthenticated ? 'person' : 'person-outline'}
-                  size={20}
-                  color={isAuthenticated ? colors.primaryDark : colors.textMuted}
-                />
-              </View>
-              <View style={{ flex: 1, marginHorizontal: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[typography.bodyBold, { color: colors.text }]}>
-                    {isAuthenticated && user ? user.name : 'Guest User'}
-                  </Text>
-                  <View
-                    style={[
-                      styles.accountBadgePill,
-                      {
-                        backgroundColor: isAuthenticated
-                          ? 'rgba(16, 185, 129, 0.15)'
-                          : 'rgba(234, 179, 8, 0.15)',
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 10,
-                        fontWeight: '700',
-                        color: isAuthenticated ? colors.primary : '#EAB308',
-                      }}
-                    >
-                      {isAuthenticated ? 'MEMBER' : 'GUEST'}
-                    </Text>
-                  </View>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: spacing.lg }]}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Account / Membership Section */}
+          <StaggerItem index={0}>
+            <View
+              style={[
+                styles.accountCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: isMember ? 'rgba(16, 185, 129, 0.4)' : colors.cardBorder,
+                  borderRadius: borderRadius.xl,
+                },
+              ]}
+            >
+              <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}>
+                <View
+                  style={[
+                    styles.accountAvatar,
+                    { backgroundColor: isMember ? colors.primaryLight : colors.divider },
+                  ]}
+                >
+                  <Ionicons
+                    name={isMember ? 'person' : 'person-outline'}
+                    size={20}
+                    color={isMember ? colors.primaryDark : colors.textMuted}
+                  />
                 </View>
-                <Text
-                  style={[typography.small, { color: colors.textSecondary, marginTop: 2 }]}
-                  numberOfLines={1}
-                >
-                  {isAuthenticated && user
-                    ? user.email
-                    : 'Sign in to unlock water tracker & alerts'}
-                </Text>
-              </View>
-
-              {isAuthenticated ? (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    Alert.alert(
-                      'Sign Out',
-                      'Are you sure you want to sign out of your account?',
-                      [
-                        { text: 'Cancel', style: 'cancel' },
+                <View style={{ flex: 1, marginHorizontal: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Text style={[typography.bodyBold, { color: colors.text }]}>
+                      {isMember && user ? user.name : 'Guest User'}
+                    </Text>
+                    <View
+                      style={[
+                        styles.accountBadgePill,
                         {
-                          text: 'Sign Out',
-                          style: 'destructive',
-                          onPress: async () => {
-                            await logout();
-                            await waterNotificationService.cancelHydrationReminders();
-                          },
+                          backgroundColor: isMember
+                            ? 'rgba(16, 185, 129, 0.15)'
+                            : 'rgba(234, 179, 8, 0.15)',
                         },
-                      ]
-                    );
-                  }}
-                  style={[styles.signOutBtn, { borderColor: colors.cardBorder }]}
-                >
-                  <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => onNavigateToAuth?.('register')}
-                  style={[styles.authActionBtn, { backgroundColor: colors.primary }]}
-                >
-                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>Sign In</Text>
-                </TouchableOpacity>
-              )}
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: isMember ? colors.primary : '#EAB308',
+                        }}
+                      >
+                        {isMember ? 'PRO MEMBER' : 'GUEST'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text
+                    style={[typography.small, { color: colors.textSecondary, marginTop: 2 }]}
+                    numberOfLines={1}
+                  >
+                    {isMember && user
+                      ? `${user.email} • Liquid Glass Active`
+                      : 'Sign in to unlock Liquid Glass & voice alerts'}
+                  </Text>
+                </View>
+
+                {isMember ? (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      Alert.alert(
+                        'Sign Out',
+                        'Are you sure you want to sign out of your account?',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          {
+                            text: 'Sign Out',
+                            style: 'destructive',
+                            onPress: async () => {
+                              await logout();
+                              await waterNotificationService.cancelHydrationReminders();
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                    style={[styles.signOutBtn, { borderColor: colors.cardBorder }]}
+                  >
+                    <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => onNavigateToAuth?.('register')}
+                    style={[styles.authActionBtn, { backgroundColor: colors.primary }]}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 12 }}>Sign In</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
-          </View>
-        </StaggerItem>
+          </StaggerItem>
 
         {/* Section 1: General */}
         <StaggerItem index={1}>
@@ -502,6 +517,114 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               </View>
             </View>
 
+            {/* Liquid Glass Themes Selector */}
+            <View
+              style={[
+                styles.settingItem,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.cardBorder,
+                  borderRadius: borderRadius.xl,
+                  paddingHorizontal: 14,
+                  paddingVertical: 12,
+                  marginTop: 8,
+                  flexDirection: 'column',
+                  alignItems: 'stretch',
+                },
+              ]}
+            >
+              <View
+                style={{
+                  flexDirection: isRTL ? 'row-reverse' : 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: 10,
+                }}
+              >
+                <View style={[styles.itemLeft, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+                  <View style={[styles.iconCircle, { backgroundColor: isMember ? 'rgba(56, 189, 248, 0.15)' : 'rgba(234, 179, 8, 0.15)' }]}>
+                    <Ionicons name={isMember ? 'sparkles' : 'lock-closed'} size={18} color={isMember ? '#38BDF8' : '#EAB308'} />
+                  </View>
+                  <View style={{ marginHorizontal: 8 }}>
+                    <Text style={[typography.bodyBold, { color: colors.text }]}>
+                      Liquid Glass Aura
+                    </Text>
+                    <Text style={[typography.caption, { color: colors.textSecondary }]}>
+                      {isMember ? '6 ambient frosted glass themes' : 'Member exclusive color themes'}
+                    </Text>
+                  </View>
+                </View>
+
+                {isMember && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setThemePickerVisible(true)}
+                  >
+                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '700' }}>
+                      View All ▾
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {isMember ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
+                  {Object.values(GLASS_THEMES).map((gt) => {
+                    const isSelected = glassTheme === gt.id;
+                    return (
+                      <TouchableOpacity
+                        key={gt.id}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          triggerHaptic('light');
+                          setGlassTheme(gt.id);
+                        }}
+                        style={{
+                          marginRight: 10,
+                          alignItems: 'center',
+                          padding: 6,
+                          borderRadius: borderRadius.md,
+                          borderWidth: isSelected ? 2 : 1,
+                          borderColor: isSelected ? gt.primary : 'rgba(255, 255, 255, 0.1)',
+                          backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                        }}
+                      >
+                        <LinearGradient
+                          colors={gt.gradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ width: 36, height: 26, borderRadius: 6, marginBottom: 4 }}
+                        />
+                        <Text style={{ fontSize: 10, fontWeight: isSelected ? '800' : '500', color: isSelected ? colors.text : colors.textMuted }}>
+                          {gt.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => onNavigateToAuth?.('register')}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 10,
+                    borderRadius: borderRadius.lg,
+                    backgroundColor: 'rgba(234, 179, 8, 0.08)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(234, 179, 8, 0.25)',
+                  }}
+                >
+                  <Text style={{ color: '#EAB308', fontSize: 12, fontWeight: '600', flex: 1 }}>
+                    Register free to unlock Aurora, Sunset, Ocean & 3 more glass themes
+                  </Text>
+                  <Ionicons name="chevron-forward" size={16} color="#EAB308" />
+                </TouchableOpacity>
+              )}
+            </View>
+
             {/* Language Selector */}
             <View
               style={[
@@ -617,7 +740,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               {t('hydrationSection')}
             </Text>
 
-            {isAuthenticated ? (
+            {isMember ? (
               <View
                 style={[
                   styles.settingItem,
@@ -734,10 +857,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
                   </View>
                   <View style={{ marginHorizontal: 12, flex: 1 }}>
                     <Text style={[typography.bodyBold, { color: colors.text }]}>
-                      Unlock Hydration Alerts
+                      Unlock Hydration & Voice Alerts
                     </Text>
                     <Text style={[typography.caption, { color: colors.textSecondary }]}>
-                      Create an account to track daily water glasses & receive timely drink reminders
+                      Create an account to track water glasses and receive hourly 'Paani pi lo' reminders with audio alerts.
                     </Text>
                   </View>
                 </View>
@@ -884,6 +1007,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         </View>
       </Modal>
     </SafeAreaView>
+  </MeshBackground>
   );
 };
 
