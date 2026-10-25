@@ -10,15 +10,17 @@ LogBox.ignoreLogs([
   'Push notifications',
 ]);
 
-// Filter out informational warnings from the terminal console
-const originalWarn = console.warn;
-console.warn = (...args: any[]) => {
-  const message = args.map((a) => (typeof a === 'string' ? a : '')).join(' ');
-  if (message.includes('expo-notifications') || message.includes('Push notifications')) {
-    return;
-  }
-  originalWarn(...args);
-};
+// Global error safety handler
+const globalErrorUtils = (globalThis as any).ErrorUtils;
+if (globalErrorUtils) {
+  const defaultHandler = globalErrorUtils.getGlobalHandler && globalErrorUtils.getGlobalHandler();
+  globalErrorUtils.setGlobalHandler((error: any, isFatal: boolean) => {
+    console.warn('Unhandled React Native error caught:', error);
+    if (!isFatal && defaultHandler) {
+      defaultHandler(error, isFatal);
+    }
+  });
+}
 
 import { registerRootComponent } from 'expo';
 import App from './App';
