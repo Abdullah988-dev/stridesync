@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <!-- Small monochrome status icon for Android notifications -->
+  <circle cx="48" cy="48" r="34" stroke="#FFFFFF" stroke-width="8" fill="none" stroke-linecap="round" />
+  <g fill="#FFFFFF">
+    <ellipse cx="38" cy="50" rx="5" ry="12" />
+    <ellipse cx="38" cy="68" rx="4" ry="7" />
+    <ellipse cx="58" cy="38" rx="5" ry="12" />
+    <ellipse cx="58" cy="56" rx="4" ry="7" />
+  </g>
+</svg>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StrideSync • Precision Step & Water Tracker for Android</title>
+  <meta name="description" content="Download StrideSync APK. Ultra-low battery pedometer with persistent lockscreen notifications, 8-glass water hydration tracker, and 100% offline privacy. No Expo Go needed.">
+  <meta name="keywords" content="StrideSync, step tracker apk, android pedometer apk, offline step counter, lockscreen step notification, water tracker, expo react native apk">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  
+  <!-- Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- Phosphor Icons & Ionicons CDN for rich iconography -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Navigation Bar -->
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="#" class="brand-logo">
+        <div class="logo-icon-wrap">
+          <img src="assets/icon.png" alt="StrideSync Icon" class="logo-img" />
+          <span class="online-indicator"></span>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">StrideSync</span>
+          <span class="brand-badge">v1.0.0 APK</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#demo">Live Simulator</a>
+        <a href="#install">How to Install</a>
+        <a href="#battery">Battery Setup</a>
+      </nav>
+
+      <div class="nav-actions">
+        <a href="stridesync-v1.0.0.apk" download="stridesync-v1.0.0.apk" class="btn btn-primary btn-sm" id="nav-download-btn">
+          <i class="fa-solid fa-download"></i>
+          <span>Download APK</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="container hero-container">
+      <div class="hero-content">
+        <div class="pill-badge">
+          <i class="fa-brands fa-android"></i>
+          <span>Standalone Android Release • No Expo Go Needed</span>
+        </div>
+
+        <h1 class="hero-title">
+          Track Every Stride.<br>
+          <span class="gradient-text">Zero Battery Drain.</span><br>
+          100% Offline Privacy.
+        </h1>
+
+        <p class="hero-subtitle">
+          StrideSync combines hardware sensor batching, a persistent lockscreen progress bar, and an automated 8-glass hydration reminder system into a sleek, dark-mode native Android app.
+        </p>
+
+        <p class="hero-urdu">
+          اپنی صحت، قدموں اور پانی پینے کی مکمل تفصیل — بغیر انٹرنیٹ، بغیر کسی فالتو اشتہار کے اور صفر بیٹری کے خرچ پر۔
+        </p>
+
+        <div class="hero-cta-group">
+          <a href="stridesync-v1.0.0.apk" download="stridesync-v1.0.0.apk" class="btn btn-primary btn-lg pulse-btn" id="hero-download-btn">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+            <div>
+              <strong>Download StrideSync APK</strong>
+              <small>v1.0.0 • 105 MB • Direct Install</small>
+            </div>
+          </a>
+
+          <a href="#demo" class="btn btn-outline btn-lg">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <span>Try Interactive Demo</span>
+          </a>
+        </div>
+
+        <div class="trust-indicators">
+          <div class="trust-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>No Account Required</span>
+          </div>
+          <div class="trust-item">
+            <i class="fa-solid fa-bell"></i>
+            <span>Live Notification Tray</span>
+          </div>
+          <div class="trust-item">
+            <i class="fa-solid fa-faucet-drip"></i>
+            <span>Water Hydration Track</span>
+          </div>
+          <div class="trust-item">
+            <i class="fa-solid fa-language"></i>
+            <span>English & Urdu</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Interactive Phone Mockup -->
+      <div class="hero-visual" id="demo">
+        <div class="phone-frame">
+          <div class="phone-speaker"></div>
+          <div class="phone-camera"></div>
+          <div class="phone-glare"></div>
+
+          <div class="phone-screen">
+            <!-- Simulated Android Status Bar -->
+            <div class="mockup-status-bar">
+              <span id="mockup-clock">10:45 AM</span>
+              <div class="status-icons">
+                <i class="fa-solid fa-wifi"></i>
+                <i class="fa-solid fa-signal"></i>
+                <i class="fa-solid fa-battery-full"></i>
+              </div>
+            </div>
+
+            <!-- Lockscreen Persistent Notification Preview -->
+            <div class="mockup-notification" id="mockup-notification-banner">
+              <div class="notif-header">
+                <div class="notif-brand">
+                  <img src="assets/icon.png" alt="mini icon" class="notif-mini-icon">
+                  <span class="notif-app-name">StrideSync • Live Step Tracker</span>
+                </div>
+                <span class="notif-time">Just now</span>
+              </div>
+              <div class="notif-body">
+                <div class="notif-main-text">
+                  <strong id="notif-steps-text">6,420 steps</strong> (64% of 10k goal)
+                </div>
+                <div class="notif-progress-track">
+                  <div class="notif-progress-fill" id="notif-progress-bar" style="width: 64%;"></div>
+                </div>
+                <div class="notif-stats-row">
+                  <span><i class="fa-solid fa-location-dot"></i> <b id="notif-km-text">4.88 km</b></span>
+                  <span><i class="fa-solid fa-fire"></i> <b id="notif-kcal-text">270 kcal</b></span>
+                  <span><i class="fa-solid fa-clock"></i> <b id="notif-mins-text">53 mins</b></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- App Inner Header -->
+            <div class="app-inner-header">
+              <div>
+                <span class="app-date-pill">TODAY</span>
+                <h3 class="app-screen-title">Activity Dashboard</h3>
+              </div>
+              <div class="member-chip" id="demo-member-badge">
+                <i class="fa-solid fa-shield-check"></i>
+                <span>MEMBER</span>
+              </div>
+            </div>
+
+            <!-- Circular Progress Card -->
+            <div class="mockup-radial-card">
+              <div class="circle-svg-wrapper">
+                <svg viewBox="0 0 160 160" class="radial-svg">
+                  <circle cx="80" cy="80" r="68" class="circle-bg" />
+                  <circle cx="80" cy="80" r="68" class="circle-progress" id="demo-progress-circle" style="stroke-dashoffset: 153;" />
+                </svg>
+                <div class="circle-inner-content">
+                  <i class="fa-solid fa-shoe-prints step-icon-pulse"></i>
+                  <span class="circle-step-count" id="demo-steps-count">6,420</span>
+                  <span class="circle-goal-text">of 10,000 steps</span>
+                </div>
+              </div>
+
+              <div class="metrics-grid">
+                <div class="metric-item">
+                  <i class="fa-solid fa-location-arrow text-emerald"></i>
+                  <strong id="demo-km-count">4.88</strong>
+                  <small>km walked</small>
+                </div>
+                <div class="metric-item">
+                  <i class="fa-solid fa-fire-flame-curved text-amber"></i>
+                  <strong id="demo-cal-count">270</strong>
+                  <small>calories</small>
+                </div>
+                <div class="metric-item">
+                  <i class="fa-solid fa-stopwatch text-purple"></i>
+                  <strong id="demo-time-count">53</strong>
+                  <small>active mins</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Water Tracker Widget -->
+            <div class="mockup-water-card">
+              <div class="water-card-head">
+                <div class="water-title">
+                  <i class="fa-solid fa-droplet text-sky"></i>
+                  <span>Daily Hydration</span>
+                </div>
+                <span class="water-stat" id="demo-water-text">1,250 / 2,000 ml</span>
+              </div>
+              <div class="glasses-row" id="demo-glasses-row">
+                <button class="glass filled" data-index="0" title="Glass 1">🥛</button>
+                <button class="glass filled" data-index="1" title="Glass 2">🥛</button>
+                <button class="glass filled" data-index="2" title="Glass 3">🥛</button>
+                <button class="glass filled" data-index="3" title="Glass 4">🥛</button>
+                <button class="glass filled" data-index="4" title="Glass 5">🥛</button>
+                <button class="glass empty" data-index="5" title="Glass 6">🥛</button>
+                <button class="glass empty" data-index="6" title="Glass 7">🥛</button>
+                <button class="glass empty" data-index="7" title="Glass 8">🥛</button>
+              </div>
+              <p class="water-hint">Tap glasses to log water or test hydration fill</p>
+            </div>
+
+            <!-- Simulator Control Toolbar -->
+            <div class="mockup-controls">
+              <button class="ctrl-btn" id="btn-add-steps">
+                <i class="fa-solid fa-plus"></i> +500 Steps
+              </button>
+              <button class="ctrl-btn" id="btn-toggle-walk">
+                <i class="fa-solid fa-person-walking"></i> <span id="walk-text">Auto Walk</span>
+              </button>
+              <button class="ctrl-btn" id="btn-reset-demo">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Features Section -->
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">ENGINEERED FOR REAL LIFE</span>
+        <h2 class="section-title">Everything You Need. Nothing You Don't.</h2>
+        <p class="section-subtitle">
+          Designed specifically to overcome common mobile tracker problems: no aggressive killing by Android, no battery draining GPS, and zero paywalls for basic health stats.
+        </p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon icon-emerald">
+            <i class="fa-solid fa-person-running"></i>
+          </div>
+          <h3>Hardware Pedometer Sensor</h3>
+          <p>
+            Uses low-power native accelerometer batching rather than constant GPS positioning. Saves up to 85% battery compared to traditional fitness apps.
+          </p>
+          <div class="feature-pill">Zero GPS Drain</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon icon-sky">
+            <i class="fa-solid fa-bell"></i>
+          </div>
+          <h3>Lockscreen Live Progress Bar</h3>
+          <p>
+            Check your steps and calories in a split-second without unlocking your phone. A clean, silent persistent notification bar stays pinned in your drawer.
+          </p>
+          <div class="feature-pill">Real-time Android Service</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon icon-cyan">
+            <i class="fa-solid fa-faucet-drip"></i>
+          </div>
+          <h3>Smart Hydration Tracker</h3>
+          <p>
+            Log your daily 8 glasses (2,000ml) with satisfying water sound feedback and receive 5 scheduled gentle hydration reminders throughout the day.
+          </p>
+          <div class="feature-pill">8-Glass Reminders</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon icon-amber">
+            <i class="fa-solid fa-award"></i>
+          </div>
+          <h3>Milestones & Streak Badges</h3>
+          <p>
+            Unlock achievements from your first step, 5K, 10K, to Half Marathon and 30-day streak awards. Registered members instantly earn the exclusive Club Member badge.
+          </p>
+          <div class="feature-pill">Uniform Badge Showcase</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon icon-purple">
+            <i class="fa-solid fa-language"></i>
+          </div>
+          <h3>Dual Language (English + اردو)</h3>
+          <p>
+            Full right-to-left (RTL) support for Urdu with authentic terminology alongside fluent English. Switch languages dynamically in 1 tap inside Settings.
+          </p>
+          <div class="feature-pill">Full RTL Compatibility</div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon icon-rose">
+            <i class="fa-solid fa-user-lock"></i>
+          </div>
+          <h3>100% Offline & Private</h3>
+          <p>
+            No mandatory cloud login. All your step data, water logs, and streaks are securely stored locally on your device storage via AsyncStorage.
+          </p>
+          <div class="feature-pill">Private & Offline</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Install Without Expo Go -->
+  <section class="section install-section" id="install">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">QUICK INSTALLATION</span>
+        <h2 class="section-title">Install Directly on Your Phone (No Expo Go)</h2>
+        <p class="section-subtitle">
+          Just like any standard Android app, download the .apk file and install in under 60 seconds.
+        </p>
+      </div>
+
+      <div class="install-steps-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-icon"><i class="fa-solid fa-download"></i></div>
+          <h3>Download the APK</h3>
+          <p>Tap the download button below directly from your Android phone's Chrome or browser to save <code>stridesync.apk</code>.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-icon"><i class="fa-solid fa-shield"></i></div>
+          <h3>Allow Unknown Sources</h3>
+          <p>When Android prompts <i>"File might be harmful"</i> or asks for permission, tap <b>Settings</b> and toggle <b>"Allow from this source"</b>.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <h3>Install & Launch</h3>
+          <p>Tap <b>Install</b>. StrideSync will appear on your home screen with its official icon. Open it and start walking!</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- OEM Battery Optimization Guide -->
+  <section class="section battery-section" id="battery">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">24/7 BACKGROUND TRACKING</span>
+        <h2 class="section-title">Keep Pedometer Active in Background</h2>
+        <p class="section-subtitle">
+          Chinese OEMs (Realme, Xiaomi, Oppo, OnePlus) have aggressive battery savers. Follow these 2 steps so your steps never freeze when the screen is locked:
+        </p>
+      </div>
+
+      <div class="oem-tabs-container">
+        <div class="oem-tab-buttons">
+          <button class="oem-tab active" data-oem="realme">Realme & Oppo (ColorOS)</button>
+          <button class="oem-tab" data-oem="xiaomi">Xiaomi & Poco (HyperOS/MIUI)</button>
+          <button class="oem-tab" data-oem="samsung">Samsung (One UI)</button>
+          <button class="oem-tab" data-oem="oneplus">OnePlus (OxygenOS)</button>
+        </div>
+
+        <div class="oem-tab-content active" id="oem-realme">
+          <div class="oem-content-box">
+            <h4><i class="fa-solid fa-mobile"></i> Realme / Oppo Setup Guide:</h4>
+            <ol>
+              <li>Go to <b>Settings &gt; Apps &gt; App management &gt; StrideSync</b>.</li>
+              <li>Tap <b>Battery usage</b> and select <b>"Allow background activity"</b> &amp; <b>"Allow auto-launch"</b>.</li>
+              <li>Open Recent Apps drawer, swipe down or tap the two dots on StrideSync, and choose <b>"Lock"</b> (🔒 icon appears).</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="oem-tab-content" id="oem-xiaomi">
+          <div class="oem-content-box">
+            <h4><i class="fa-solid fa-mobile"></i> Xiaomi / Poco / Redmi Setup Guide:</h4>
+            <ol>
+              <li>Long press StrideSync app icon &gt; tap <b>App info (ⓘ)</b>.</li>
+              <li>Enable <b>"Autostart"</b> toggle.</li>
+              <li>Under <b>Battery Saver</b>, choose <b>"No restrictions"</b> (Default MIUI kills apps after 10 mins).</li>
+              <li>Lock app in Recent Apps drawer.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="oem-tab-content" id="oem-samsung">
+          <div class="oem-content-box">
+            <h4><i class="fa-solid fa-mobile"></i> Samsung Galaxy Setup Guide:</h4>
+            <ol>
+              <li>Go to <b>Settings &gt; Battery and device care &gt; Battery</b>.</li>
+              <li>Tap <b>Background usage limits &gt; Never sleeping apps</b>.</li>
+              <li>Tap <b>+</b> and add <b>StrideSync</b> to the list.</li>
+            </ol>
+          </div>
+        </div>
+
+        <div class="oem-tab-content" id="oem-oneplus">
+          <div class="oem-content-box">
+            <h4><i class="fa-solid fa-mobile"></i> OnePlus Setup Guide:</h4>
+            <ol>
+              <li>Go to <b>Settings &gt; Battery &gt; More settings &gt; Optimize battery use</b>.</li>
+              <li>Find <b>StrideSync</b> and set to <b>"Don't optimize"</b>.</li>
+              <li>Lock the app in the recent tasks overview.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section class="section download-section" id="download">
+    <div class="container">
+      <div class="download-card">
+        <div class="download-badge">OFFICIAL RELEASE</div>
+        <h2 class="download-title">Get StrideSync for Android Today</h2>
+        <p class="download-desc">
+          Ready to track your steps with precision, enjoy live lockscreen stats, and keep your hydration in check? Download the standalone APK now.
+        </p>
+
+        <div class="apk-spec-grid">
+          <div class="apk-spec">
+            <span class="spec-label">Version</span>
+            <span class="spec-value">v1.0.0 (Release)</span>
+          </div>
+          <div class="apk-spec">
+            <span class="spec-label">Package</span>
+            <span class="spec-value">com.stridesync.steptracker</span>
+          </div>
+          <div class="apk-spec">
+            <span class="spec-label">File Size</span>
+            <span class="spec-value">~105 MB</span>
+          </div>
+          <div class="apk-spec">
+            <span class="spec-label">Requires</span>
+            <span class="spec-value">Android 8.0 (Oreo)+</span>
+          </div>
+        </div>
+
+        <div class="download-action-group">
+          <a href="stridesync-v1.0.0.apk" download="stridesync-v1.0.0.apk" class="btn btn-primary btn-xl" id="main-download-button">
+            <i class="fa-solid fa-download"></i>
+            <div>
+              <span>Download StrideSync APK</span>
+              <small>Direct APK File (No Expo Go)</small>
+            </div>
+          </a>
+        </div>
+
+        <div class="cloud-build-hint">
+          <p><i class="fa-solid fa-terminal"></i> <b>Developers & Custom Build:</b> Run <code>npx eas-cli build -p android --profile preview</code> in your terminal to produce an automated cloud APK via EAS.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <div class="brand-logo">
+          <img src="assets/icon.png" alt="StrideSync Logo" class="logo-img">
+          <span class="brand-name">StrideSync</span>
+        </div>
+        <p class="footer-tagline">
+          The privacy-first, low-battery step and hydration tracker built for everyday movement.
+        </p>
+      </div>
+
+      <div class="footer-links">
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <a href="#features">Features</a>
+          <a href="#demo">Live Simulator</a>
+          <a href="#install">How to Install</a>
+          <a href="#battery">Battery Setup</a>
+        </div>
+        <div class="footer-col">
+          <h4>Tech Stack</h4>
+          <a href="#">React Native 0.88</a>
+          <a href="#">Expo SDK 58</a>
+          <a href="#">Vanilla CSS3</a>
+          <a href="#">TypeScript</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <p>&copy; 2026 StrideSync. All rights reserved. Free and Open Source Mobile Pedometer.</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
