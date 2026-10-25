@@ -3,7 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StepCounterEngine, StepEngineState } from './stepCounterEngine';
 
 const { StepCounterModule } = NativeModules;
-const stepEventEmitter = StepCounterModule ? new NativeEventEmitter(StepCounterModule) : null;
+let stepEventEmitter: NativeEventEmitter | null = null;
+try {
+  if (StepCounterModule) {
+    stepEventEmitter = new NativeEventEmitter(StepCounterModule);
+  }
+} catch (e) {
+  console.warn('NativeEventEmitter initialization skipped:', e);
+}
 
 const STORAGE_KEY_STATE = '@stridesync_native_engine_state';
 
@@ -29,21 +36,27 @@ class NativeStepService {
 
     if (Platform.OS === 'android' && StepCounterModule) {
       try {
-        await StepCounterModule.startService(dailyGoal);
-        this.isNativeAvailable = true;
+        const started = await StepCounterModule.startService(dailyGoal);
+        this.isNativeAvailable = Boolean(started);
 
-        if (!this.nativeSubscription && stepEventEmitter) {
-          this.nativeSubscription = stepEventEmitter.addListener('onStepCountUpdated', (event: any) => {
-            this.notifySubscribers({
-              todaySteps: Math.round(event.todaySteps),
-              rawSensor: Math.round(event.rawSensor),
-              baseline: Math.round(event.baseline),
+        if (started && !this.nativeSubscription && stepEventEmitter) {
+          try {
+            this.nativeSubscription = stepEventEmitter.addListener('onStepCountUpdated', (event: any) => {
+              this.notifySubscribers({
+                todaySteps: Math.round(event.todaySteps),
+                rawSensor: Math.round(event.rawSensor),
+                baseline: Math.round(event.baseline),
+              });
             });
-          });
+          } catch (listenerErr) {
+            console.warn('Failed to attach step listener:', listenerErr);
+          }
         }
 
-        this.initialized = true;
-        return true;
+        if (started) {
+          this.initialized = true;
+          return true;
+        }
       } catch (e) {
         console.warn('Native StepCounterModule failed to start, falling back to engine:', e);
         this.isNativeAvailable = false;

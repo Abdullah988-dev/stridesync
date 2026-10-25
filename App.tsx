@@ -99,36 +99,40 @@ export default function App() {
   useEffect(() => {
     const bootstrap = async () => {
       try {
-        await loadUserProfile();
-        await loadAchievements();
-        await initStepsStore();
-        await useAuthStore.getState().loadAuth();
-        await useWaterStore.getState().loadWater();
+        await loadUserProfile().catch((err) => console.warn('loadUserProfile err:', err));
+        await loadAchievements().catch((err) => console.warn('loadAchievements err:', err));
+        await initStepsStore().catch((err) => console.warn('initStepsStore err:', err));
+        await useAuthStore.getState().loadAuth().catch((err) => console.warn('loadAuth err:', err));
+        await useWaterStore.getState().loadWater().catch((err) => console.warn('loadWater err:', err));
 
         const authState = useAuthStore.getState();
-        if (authState.isAuthenticated) {
-          await waterNotificationService.scheduleHydrationReminders();
+        if (authState.isAuthenticated && !authState.isGuest) {
+          await waterNotificationService.scheduleHydrationReminders().catch(() => {});
         }
 
-        // Initialize persistent live step notification if enabled
+        // Initialize persistent live step notification only if user has finished onboarding
         const user = useUserStore.getState();
-        if (user.notificationsEnabled) {
-          await notificationService.requestPermissions();
-          await liveNotificationService.initNotificationChannels();
-          const metrics = stepService.getCurrentMetrics();
-          await liveNotificationService.updateLiveStepNotification(
-            {
-              steps: metrics.steps,
-              goal: user.dailyGoal,
-              distanceKm: metrics.distanceKm,
-              calories: metrics.calories,
-              activeMinutes: metrics.activeMinutes,
-              units: user.units,
-              language: user.language,
-              isPaused: metrics.isPaused,
-            },
-            true
-          );
+        if (user.isOnboarded && user.notificationsEnabled) {
+          try {
+            await notificationService.requestPermissions();
+            await liveNotificationService.initNotificationChannels();
+            const metrics = stepService.getCurrentMetrics();
+            await liveNotificationService.updateLiveStepNotification(
+              {
+                steps: metrics.steps,
+                goal: user.dailyGoal,
+                distanceKm: metrics.distanceKm,
+                calories: metrics.calories,
+                activeMinutes: metrics.activeMinutes,
+                units: user.units,
+                language: user.language,
+                isPaused: metrics.isPaused,
+              },
+              true
+            );
+          } catch (notifErr) {
+            console.warn('Initial live notification setup skipped:', notifErr);
+          }
         }
       } catch (err) {
         console.warn('Bootstrap error:', err);
@@ -148,7 +152,7 @@ export default function App() {
   useEffect(() => {
     const fallback = setTimeout(() => {
       SplashScreen.hideAsync().catch(() => {});
-    }, 1200);
+    }, 1500);
     return () => clearTimeout(fallback);
   }, []);
 

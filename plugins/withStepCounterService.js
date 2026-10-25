@@ -16,6 +16,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -24,13 +25,14 @@ import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class StepCounterForegroundService : Service(), SensorEventListener {
 
-    private lateinit var sensorManager: SensorManager
+    private var sensorManager: SensorManager? = null
     private var stepSensor: Sensor? = null
     private lateinit var prefs: SharedPreferences
 
@@ -61,33 +63,53 @@ class StepCounterForegroundService : Service(), SensorEventListener {
 
     override fun onCreate() {
         super.onCreate()
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        stepSensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        try {
+            prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val sm = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            if (sm == null) {
+                stopSelf()
+                return
+            }
+            sensorManager = sm
+            stepSensor = sm.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
 
-        createNotificationChannel()
-        startForegroundServiceNotification(getStoredTodaySteps())
+            createNotificationChannel()
+            startForegroundServiceNotification(getStoredTodaySteps())
 
-        if (stepSensor != null) {
-            sensorManager.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_UI)
-            activeListenerCount = 1
-            prefs.edit().putInt(KEY_LISTENER_COUNT, 1).apply()
+            if (stepSensor != null) {
+                sm.registerListener(this, stepSensor, SensorManager.SENSOR_DELAY_UI)
+                activeListenerCount = 1
+                prefs.edit().putInt(KEY_LISTENER_COUNT, 1).apply()
+            }
+            isRunning = true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            try { stopSelf() } catch (_: Exception) {}
         }
-        isRunning = true
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val currentSteps = getStoredTodaySteps()
-        startForegroundServiceNotification(currentSteps)
+        try {
+            val currentSteps = getStoredTodaySteps()
+            startForegroundServiceNotification(currentSteps)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         return START_STICKY
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        sensorManager.unregisterListener(this)
-        activeListenerCount = 0
-        prefs.edit().putInt(KEY_LISTENER_COUNT, 0).apply()
-        isRunning = false
+        try {
+            super.onDestroy()
+            sensorManager?.unregisterListener(this)
+            activeListenerCount = 0
+            if (::prefs.isInitialized) {
+                prefs.edit().putInt(KEY_LISTENER_COUNT, 0).apply()
+            }
+            isRunning = false
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -97,185 +119,229 @@ class StepCounterForegroundService : Service(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
-        if (event == null || event.sensor.type != Sensor.TYPE_STEP_COUNTER) return
+        try {
+            if (event == null || event.sensor.type != Sensor.TYPE_STEP_COUNTER || !::prefs.isInitialized) return
 
-        val rawSensorValue = event.values[0].toLong()
-        val now = System.currentTimeMillis()
-        val todayStr = getTodayDate()
+            val rawSensorValue = event.values[0].toLong()
+            val now = System.currentTimeMillis()
+            val todayStr = getTodayDate()
 
-        var baseline = prefs.getLong(KEY_DAY_BASELINE, 0L)
-        var lastSensorVal = prefs.getLong(KEY_LAST_SENSOR_VALUE, 0L)
-        val savedDate = prefs.getString(KEY_LAST_SAVED_DATE, "") ?: ""
-        var stepsBeforeReboot = prefs.getLong(KEY_STEPS_BEFORE_REBOOT, 0L)
-        var todaySteps = prefs.getLong(KEY_TODAY_STEPS, 0L)
+            var baseline = prefs.getLong(KEY_DAY_BASELINE, 0L)
+            var lastSensorVal = prefs.getLong(KEY_LAST_SENSOR_VALUE, 0L)
+            val savedDate = prefs.getString(KEY_LAST_SAVED_DATE, "") ?: ""
+            var stepsBeforeReboot = prefs.getLong(KEY_STEPS_BEFORE_REBOOT, 0L)
+            var todaySteps = prefs.getLong(KEY_TODAY_STEPS, 0L)
 
-        // 1. Initial Launch
-        if (baseline == 0L && lastSensorVal == 0L) {
-            baseline = rawSensorValue
-            lastSensorVal = rawSensorValue
-            todaySteps = 0L
-            stepsBeforeReboot = 0L
+            // 1. Initial Launch
+            if (baseline == 0L && lastSensorVal == 0L) {
+                baseline = rawSensorValue
+                lastSensorVal = rawSensorValue
+                todaySteps = 0L
+                stepsBeforeReboot = 0L
 
-            prefs.edit()
-                .putLong(KEY_DAY_BASELINE, baseline)
-                .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
-                .putString(KEY_LAST_SAVED_DATE, todayStr)
-                .putLong(KEY_STEPS_BEFORE_REBOOT, 0L)
-                .putLong(KEY_TODAY_STEPS, 0L)
-                .putBoolean(KEY_REBOOT_DETECTED, false)
-                .apply()
-            return
-        }
-
-        // 2. Midnight Rollover (new day)
-        if (todayStr != savedDate) {
-            baseline = rawSensorValue
-            lastSensorVal = rawSensorValue
-            todaySteps = 0L
-            stepsBeforeReboot = 0L
-
-            prefs.edit()
-                .putLong(KEY_DAY_BASELINE, baseline)
-                .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
-                .putString(KEY_LAST_SAVED_DATE, todayStr)
-                .putLong(KEY_STEPS_BEFORE_REBOOT, 0L)
-                .putLong(KEY_TODAY_STEPS, 0L)
-                .putBoolean(KEY_REBOOT_DETECTED, false)
-                .apply()
-
-            updateNotification(0L)
-            StepCounterModule.notifyStepUpdate(0L, rawSensorValue, baseline)
-            return
-        }
-
-        // 3. Duplicate event: ignore
-        if (rawSensorValue == lastSensorVal) {
-            return
-        }
-
-        // 4. Device Reboot: sensor resets to zero / low value
-        if (rawSensorValue < lastSensorVal) {
-            // Check if minor jitter (out-of-order)
-            if (lastSensorVal - rawSensorValue <= 2L && rawSensorValue > 0) {
+                prefs.edit()
+                    .putLong(KEY_DAY_BASELINE, baseline)
+                    .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
+                    .putString(KEY_LAST_SAVED_DATE, todayStr)
+                    .putLong(KEY_STEPS_BEFORE_REBOOT, 0L)
+                    .putLong(KEY_TODAY_STEPS, 0L)
+                    .putBoolean(KEY_REBOOT_DETECTED, false)
+                    .apply()
                 return
             }
 
-            // Reboot detected! Preserve steps counted prior to reboot
-            val countedBeforeReboot = Math.max(0L, lastSensorVal - baseline)
-            stepsBeforeReboot += countedBeforeReboot
-            baseline = rawSensorValue
+            // 2. Midnight Rollover (new day)
+            if (todayStr != savedDate) {
+                baseline = rawSensorValue
+                lastSensorVal = rawSensorValue
+                todaySteps = 0L
+                stepsBeforeReboot = 0L
+
+                prefs.edit()
+                    .putLong(KEY_DAY_BASELINE, baseline)
+                    .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
+                    .putString(KEY_LAST_SAVED_DATE, todayStr)
+                    .putLong(KEY_STEPS_BEFORE_REBOOT, 0L)
+                    .putLong(KEY_TODAY_STEPS, 0L)
+                    .putBoolean(KEY_REBOOT_DETECTED, false)
+                    .apply()
+
+                updateNotification(0L)
+                StepCounterModule.notifyStepUpdate(0L, rawSensorValue, baseline)
+                return
+            }
+
+            // 3. Duplicate event: ignore
+            if (rawSensorValue == lastSensorVal) {
+                return
+            }
+
+            // 4. Device Reboot: sensor resets to zero / low value
+            if (rawSensorValue < lastSensorVal) {
+                // Check if minor jitter (out-of-order)
+                if (lastSensorVal - rawSensorValue <= 2L && rawSensorValue > 0) {
+                    return
+                }
+
+                // Reboot detected! Preserve steps counted prior to reboot
+                val countedBeforeReboot = Math.max(0L, lastSensorVal - baseline)
+                stepsBeforeReboot += countedBeforeReboot
+                baseline = rawSensorValue
+                lastSensorVal = rawSensorValue
+                todaySteps = stepsBeforeReboot + (rawSensorValue - baseline)
+
+                prefs.edit()
+                    .putLong(KEY_STEPS_BEFORE_REBOOT, stepsBeforeReboot)
+                    .putLong(KEY_DAY_BASELINE, baseline)
+                    .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
+                    .putLong(KEY_TODAY_STEPS, todaySteps)
+                    .putBoolean(KEY_REBOOT_DETECTED, true)
+                    .apply()
+
+                updateNotification(todaySteps)
+                StepCounterModule.notifyStepUpdate(todaySteps, rawSensorValue, baseline)
+                return
+            }
+
+            // 5. Normal Increment with Jump-Clamp (> 5 steps/sec)
+            val rawDelta = rawSensorValue - lastSensorVal
+            val elapsedSec = Math.max(0.2, (now - lastUpdateTimeMs) / 1000.0)
+            val maxAllowed = Math.ceil(elapsedSec * 5.0).toLong()
+
+            if (rawDelta > maxAllowed && elapsedSec < 60) {
+                // Clamp spike: adjust baseline forward
+                val excess = rawDelta - maxAllowed
+                baseline += excess
+                prefs.edit().putLong(KEY_DAY_BASELINE, baseline).apply()
+            }
+
+            todaySteps = Math.max(todaySteps, (rawSensorValue - baseline) + stepsBeforeReboot)
             lastSensorVal = rawSensorValue
-            todaySteps = stepsBeforeReboot + (rawSensorValue - baseline)
+            lastUpdateTimeMs = now
 
             prefs.edit()
-                .putLong(KEY_STEPS_BEFORE_REBOOT, stepsBeforeReboot)
-                .putLong(KEY_DAY_BASELINE, baseline)
                 .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
                 .putLong(KEY_TODAY_STEPS, todaySteps)
-                .putBoolean(KEY_REBOOT_DETECTED, true)
                 .apply()
 
-            updateNotification(todaySteps)
+            // Throttle notification updates (at most every 5s or 10+ steps)
+            if (todaySteps - lastNotifiedSteps >= 10 || now - lastUpdateTimeMs >= 5000) {
+                lastNotifiedSteps = todaySteps
+                updateNotification(todaySteps)
+            }
+
             StepCounterModule.notifyStepUpdate(todaySteps, rawSensorValue, baseline)
-            return
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-
-        // 5. Normal Increment with Jump-Clamp (> 5 steps/sec)
-        val rawDelta = rawSensorValue - lastSensorVal
-        val elapsedSec = Math.max(0.2, (now - lastUpdateTimeMs) / 1000.0)
-        val maxAllowed = Math.ceil(elapsedSec * 5.0).toLong()
-
-        if (rawDelta > maxAllowed && elapsedSec < 60) {
-            // Clamp spike: adjust baseline forward
-            val excess = rawDelta - maxAllowed
-            baseline += excess
-            prefs.edit().putLong(KEY_DAY_BASELINE, baseline).apply()
-        }
-
-        todaySteps = Math.max(todaySteps, (rawSensorValue - baseline) + stepsBeforeReboot)
-        lastSensorVal = rawSensorValue
-        lastUpdateTimeMs = now
-
-        prefs.edit()
-            .putLong(KEY_LAST_SENSOR_VALUE, lastSensorVal)
-            .putLong(KEY_TODAY_STEPS, todaySteps)
-            .apply()
-
-        // Throttle notification updates (at most every 5s or 10+ steps)
-        if (todaySteps - lastNotifiedSteps >= 10 || now - lastUpdateTimeMs >= 5000) {
-            lastNotifiedSteps = todaySteps
-            updateNotification(todaySteps)
-        }
-
-        StepCounterModule.notifyStepUpdate(todaySteps, rawSensorValue, baseline)
     }
 
     private fun getStoredTodaySteps(): Long {
-        return prefs.getLong(KEY_TODAY_STEPS, 0L)
+        return if (::prefs.isInitialized) prefs.getLong(KEY_TODAY_STEPS, 0L) else 0L
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Live Step Tracker"
-            val descriptionText = "Displays real-time steps while app is running in background"
-            val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-                setShowBadge(false)
-                setSound(null, null)
-                enableVibration(false)
+            try {
+                val name = "Live Step Tracker"
+                val descriptionText = "Displays real-time steps while app is running in background"
+                val importance = NotificationManager.IMPORTANCE_LOW
+                val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                    description = descriptionText
+                    setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                }
+                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+                notificationManager?.createNotificationChannel(channel)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
         }
     }
 
-    private fun buildNotification(steps: Long): Notification {
-        val goal = prefs.getLong(KEY_DAILY_GOAL, 10000L).coerceAtLeast(1000L)
-        val percent = Math.min(100, ((steps * 100) / goal).toInt())
-        val distanceKm = String.format(Locale.US, "%.2f", steps * 0.00075)
-        val calories = (steps * 0.04).toInt()
-        val activeMins = (steps / 100).toInt()
+    private fun buildNotification(steps: Long): Notification? {
+        return try {
+            val goal = (if (::prefs.isInitialized) prefs.getLong(KEY_DAILY_GOAL, 10000L) else 10000L).coerceAtLeast(1000L)
+            val percent = Math.min(100, ((steps * 100) / goal).toInt())
+            val distanceKm = String.format(Locale.US, "%.2f", steps * 0.00075)
+            val calories = (steps * 0.04).toInt()
+            val activeMins = (steps / 100).toInt()
 
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
-        )
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName) ?: Intent()
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0)
+            )
 
-        val title = "%,d steps".format(steps)
-        val body = "$distanceKm km  |  $calories kcal  |  $activeMins min"
-        val progressText = "$percent% of %,d goal".format(goal)
+            val title = "%,d steps".format(steps)
+            val body = "$distanceKm km  |  $calories kcal  |  $activeMins min"
+            val progressText = "$percent% of %,d goal".format(goal)
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setSubText(progressText)
-            .setSmallIcon(android.R.drawable.ic_menu_directions)
-            .setColor(0xFF10B981.toInt())
-            .setOngoing(true)
-            .setOnlyAlertOnce(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setProgress(100, percent, false)
-            .setContentIntent(pendingIntent)
-            .build()
+            var smallIconRes = applicationInfo.icon
+            val notifIconRes = resources.getIdentifier("notification_icon", "drawable", packageName)
+            if (notifIconRes != 0) {
+                smallIconRes = notifIconRes
+            } else if (smallIconRes == 0) {
+                smallIconRes = android.R.drawable.stat_notify_sync
+            }
+
+            NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setSubText(progressText)
+                .setSmallIcon(smallIconRes)
+                .setColor(0xFF10B981.toInt())
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setProgress(100, percent, false)
+                .setContentIntent(pendingIntent)
+                .build()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     private fun startForegroundServiceNotification(steps: Long) {
-        val notification = buildNotification(steps)
-        if (Build.VERSION.SDK_INT >= 34) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            val notification = buildNotification(steps) ?: return
+            if (Build.VERSION.SDK_INT >= 34) {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    this,
+                    android.Manifest.permission.ACTIVITY_RECOGNITION
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (hasPermission) {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
+                } else {
+                    try {
+                        startForeground(NOTIFICATION_ID, notification)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        stopSelf()
+                    }
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            try { stopSelf() } catch (_: Exception) {}
         }
     }
 
     private fun updateNotification(steps: Long) {
-        val notification = buildNotification(steps)
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        try {
+            val notification = buildNotification(steps) ?: return
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.notify(NOTIFICATION_ID, notification)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 }
 `;
@@ -285,21 +351,35 @@ const KOTLIN_BOOT_RECEIVER_CODE = `package com.stridesync.steptracker
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 
 class BootCompletedReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action
-        if (Intent.ACTION_BOOT_COMPLETED == action ||
-            Intent.ACTION_MY_PACKAGE_REPLACED == action ||
-            "android.intent.action.QUICKBOOT_POWERON" == action) {
+    override fun onReceive(context: Context, intent: Intent?) {
+        try {
+            val action = intent?.action ?: return
+            if (Intent.ACTION_BOOT_COMPLETED == action ||
+                Intent.ACTION_MY_PACKAGE_REPLACED == action ||
+                "android.intent.action.QUICKBOOT_POWERON" == action) {
 
-            val serviceIntent = Intent(context, StepCounterForegroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(serviceIntent)
-            } else {
-                context.startService(serviceIntent)
+                if (Build.VERSION.SDK_INT >= 34) {
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        android.Manifest.permission.ACTIVITY_RECOGNITION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (!hasPermission) return
+                }
+
+                val serviceIntent = Intent(context, StepCounterForegroundService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 }
@@ -310,7 +390,9 @@ const KOTLIN_MODULE_CODE = `package com.stridesync.steptracker
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.core.content.ContextCompat
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
@@ -329,13 +411,17 @@ class StepCounterModule(private val reactContext: ReactApplicationContext) :
 
         fun notifyStepUpdate(todaySteps: Long, rawSensor: Long, baseline: Long) {
             instance?.let { module ->
-                val params = Arguments.createMap().apply {
-                    putDouble("todaySteps", todaySteps.toDouble())
-                    putDouble("rawSensor", rawSensor.toDouble())
-                    putDouble("baseline", baseline.toDouble())
-                    putDouble("timestamp", System.currentTimeMillis().toDouble())
+                try {
+                    val params = Arguments.createMap().apply {
+                        putDouble("todaySteps", todaySteps.toDouble())
+                        putDouble("rawSensor", rawSensor.toDouble())
+                        putDouble("baseline", baseline.toDouble())
+                        putDouble("timestamp", System.currentTimeMillis().toDouble())
+                    }
+                    module.sendEvent("onStepCountUpdated", params)
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
-                module.sendEvent("onStepCountUpdated", params)
             }
         }
     }
@@ -347,16 +433,32 @@ class StepCounterModule(private val reactContext: ReactApplicationContext) :
     override fun getName(): String = "StepCounterModule"
 
     private fun sendEvent(eventName: String, params: Any?) {
-        if (reactContext.hasActiveReactInstance()) {
-            reactContext
-                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
-                .emit(eventName, params)
+        try {
+            if (reactContext.hasActiveReactInstance()) {
+                reactContext
+                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+                    .emit(eventName, params)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     @ReactMethod
     fun startService(dailyGoal: Double, promise: Promise) {
         try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    reactContext,
+                    android.Manifest.permission.ACTIVITY_RECOGNITION
+                ) == PackageManager.PERMISSION_GRANTED
+
+                if (!hasPermission) {
+                    promise.resolve(false)
+                    return
+                }
+            }
+
             prefs.edit().putLong(StepCounterForegroundService.KEY_DAILY_GOAL, dailyGoal.toLong()).apply()
             val intent = Intent(reactContext, StepCounterForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -366,7 +468,7 @@ class StepCounterModule(private val reactContext: ReactApplicationContext) :
             }
             promise.resolve(true)
         } catch (e: Exception) {
-            promise.reject("START_SERVICE_ERROR", e.message)
+            promise.resolve(false)
         }
     }
 
@@ -377,7 +479,7 @@ class StepCounterModule(private val reactContext: ReactApplicationContext) :
             reactContext.stopService(intent)
             promise.resolve(true)
         } catch (e: Exception) {
-            promise.reject("STOP_SERVICE_ERROR", e.message)
+            promise.resolve(false)
         }
     }
 
@@ -437,7 +539,7 @@ class StepCounterModule(private val reactContext: ReactApplicationContext) :
     }
 
     @ReactMethod
-    fun removeListeners(count: Int) {
+    fun removeListeners(count: Double) {
         // Keep React Native event listener happy
     }
 }
