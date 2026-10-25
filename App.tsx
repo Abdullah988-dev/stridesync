@@ -15,6 +15,7 @@ import {
 import { ThemeProvider, useAppTheme } from './src/theme/themeContext';
 import { I18nProvider } from './src/i18n/i18nContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 
 import { useUserStore } from './src/store/useUserStore';
 import { useStepsStore } from './src/store/useStepsStore';
@@ -173,11 +174,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.rootContainer} onLayout={onLayoutRootView}>
-        <ThemeProvider userThemeMode={theme} onThemeChange={setTheme}>
-          <I18nProvider userLanguage={language} onLanguageChange={setLanguage}>
-            <AppContent />
-          </I18nProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider userThemeMode={theme} onThemeChange={setTheme}>
+            <I18nProvider userLanguage={language} onLanguageChange={setLanguage}>
+              <AppContent />
+            </I18nProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </View>
     </SafeAreaProvider>
   );
