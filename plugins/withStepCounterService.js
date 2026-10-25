@@ -1,6 +1,5 @@
 const {
   withAndroidManifest,
-  withAppBuildGradle,
   withDangerousMod,
 } = require('@expo/config-plugins');
 const fs = require('fs');
@@ -640,18 +639,7 @@ function withStepCounterService(config) {
     return config;
   });
 
-  // 2. Add build.gradle dependencies
-  config = withAppBuildGradle(config, (config) => {
-    if (!config.modResults.contents.includes('androidx.work:work-runtime-ktx')) {
-      config.modResults.contents = config.modResults.contents.replace(
-        /dependencies\s*{/,
-        `dependencies {\n    implementation "androidx.work:work-runtime-ktx:2.9.0"`
-      );
-    }
-    return config;
-  });
-
-  // 3. Write Kotlin files into Android project during prebuild
+  // 2. Write Kotlin files into Android project during prebuild
   config = withDangerousMod(config, [
     'android',
     async (config) => {
